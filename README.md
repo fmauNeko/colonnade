@@ -6,7 +6,7 @@ Colonnade is a database manager for many DBMS. It is cross-platform and written 
 
 ## Download
 
-Every [GitHub release](https://github.com/fmauNeko/colonnade/releases) ships a portable archive per platform, each with a `.sha256` checksum:
+Every [GitHub release](https://github.com/fmauNeko/colonnade/releases) ships an archive per platform, each with a `.sha256` checksum:
 
 | Platform                      | Archive                                                         |
 | ----------------------------- | --------------------------------------------------------------- |
@@ -16,9 +16,9 @@ Every [GitHub release](https://github.com/fmauNeko/colonnade/releases) ships a p
 
 The builds are not code-signed yet:
 
-- **macOS**: unzip `Colonnade.app`, move it to `/Applications`, then clear the quarantine flag Gatekeeper sets on downloads: `xattr -dr com.apple.quarantine /Applications/Colonnade.app`.
+- **macOS** (11 or newer): unzip `Colonnade.app`, move it to `/Applications`, then clear the quarantine flag Gatekeeper sets on downloads: `xattr -dr com.apple.quarantine /Applications/Colonnade.app`.
 - **Windows**: SmartScreen may warn on first launch; choose _More info_ then _Run anyway_.
-- **Linux**: the archive contains the `colonnade` binary and a desktop entry (`io.github.fmauneko.colonnade.desktop`).
+- **Linux**: the archive contains the `colonnade` binary and a desktop entry (`io.github.fmauneko.colonnade.desktop`). The binary needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40 and later) and an X11 or Wayland desktop. It links `libxcb`, `libxkbcommon` and `libxkbcommon-x11`, and renders through Vulkan (EGL as a fallback): install your distribution's Vulkan driver, such as `mesa-vulkan-drivers`, if the window does not open.
 
 ## Development
 
