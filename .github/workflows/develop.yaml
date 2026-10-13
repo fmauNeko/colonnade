@@ -24,7 +24,7 @@ jobs:
   commits:
     name: Conventional commits
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       # Install and enable only the tools this job needs (mise run would
       # otherwise auto-install every tool in mise.toml).
@@ -48,7 +48,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -70,7 +70,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [lint]
     env:
       MISE_ENABLE_TOOLS: rust,github:taiki-e/cargo-llvm-cov
@@ -94,7 +94,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [lint]
     env:
       MISE_ENABLE_TOOLS: rust
