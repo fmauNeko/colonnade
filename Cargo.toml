@@ -15,3 +15,11 @@ gpui-kit = "0.7.3"
 [dev-dependencies]
 gpui-kit = { version = "0.7.3", features = ["test-support"] }
 
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+allow_attributes_without_reason = "warn"
