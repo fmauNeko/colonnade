@@ -15,6 +15,12 @@
       "matchManagers": ["cargo"],
       "matchPackageNames": ["gpui-kit"],
       "automerge": false
+    },
+    {
+      "description": "Keep the CI runners on Ubuntu 24.04, the image that builds the Linux releases (their glibc floor)",
+      "matchDatasources": ["github-runners"],
+      "matchPackageNames": ["ubuntu"],
+      "enabled": false
     }
   ]
 }
