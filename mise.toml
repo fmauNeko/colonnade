@@ -1,0 +1,43 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+min_version = "2026.10.0"
+
+[tools]
+rust = { version = "1.99.0", profile = "minimal", components = ["rustfmt", "clippy", "llvm-tools"] }
+
+[tasks."deps:linux"]
+description = "Install the system libraries GPUI needs to build on Debian/Ubuntu"
+run = """
+sudo apt-get update
+sudo apt-get install --no-install-recommends -y \
+  build-essential pkg-config \
+  libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev libx11-xcb-dev libwayland-dev \
+  libfreetype6-dev libfontconfig1-dev libasound2-dev libssl-dev libzstd-dev
+"""
+
+[tasks.run]
+description = "Run Colonnade (debug build)"
+run = "cargo run"
+
+[tasks.build]
+description = "Build Colonnade (debug)"
+run = "cargo build --locked"
+
+[tasks."build:release"]
+description = "Build Colonnade (release)"
+run = "cargo build --locked --release"
+
+[tasks.fmt]
+description = "Format Rust sources"
+run = "cargo fmt --all"
+
+[tasks."fmt:check"]
+description = "Check Rust formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks.clippy]
+description = "Lint Rust sources with Clippy (warnings are errors)"
+run = "cargo clippy --locked --all-targets -- -D warnings"
+
+[tasks.test]
+description = "Run the test suite"
+run = "cargo test --locked"
