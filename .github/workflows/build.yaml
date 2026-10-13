@@ -1,0 +1,108 @@
+name: Build
+
+# Builds release archives for every supported platform. Called by the release
+# workflow with the new tag, or dispatched manually: without a tag the archives
+# are only uploaded as workflow artifacts.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to build and attach the archives to
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build and attach the archives to (empty = artifacts only)
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  MISE_NO_HOOKS: "1"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    env:
+      MISE_ENABLE_TOOLS: rust
+      # Keep in sync with LSMinimumSystemVersion in packaging/macos/Info.plist.
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          version: 2026.10.9
+          cache_key_prefix: mise-v1-${{ github.job }}
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: mise run deps:linux
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: mise run build:release
+
+      - name: Package archive
+        env:
+          COLONNADE_VERSION: ${{ inputs.tag }}
+          EXPECTED_TARGET: ${{ matrix.target }}
+        run: mise run package
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: colonnade-${{ matrix.target }}
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Attach archives to the release
+    if: inputs.tag != ''
+    runs-on: ubuntu-24.04
+    needs: [build]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: colonnade-*
+          path: dist
+          merge-multiple: true
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
