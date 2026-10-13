@@ -42,6 +42,11 @@ run = "cargo build --locked"
 description = "Build Colonnade (release)"
 run = "cargo build --locked --release"
 
+[tasks.package]
+description = "Package the release build into dist/ (archive + SHA-256), see script/package.sh"
+shell = "bash -c"
+run = "bash script/package.sh"
+
 [tasks.fmt]
 description = "Format Rust sources"
 run = "cargo fmt --all"

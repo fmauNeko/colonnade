@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Colonnade
+GenericName=Database Manager
+Comment=A cross-platform database manager for many DBMS
+Exec=colonnade
+Terminal=false
+Categories=Development;Database;
+StartupWMClass=io.github.fmauneko.colonnade
