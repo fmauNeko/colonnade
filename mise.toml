@@ -4,6 +4,9 @@ min_version = "2026.10.0"
 [tools]
 rust = { version = "1.99.0", profile = "minimal", components = ["rustfmt", "clippy", "llvm-tools"] }
 cocogitto = "7.0.0"
+typos = "1.51.1"
+cargo-deny = "0.20.2"
+"github:taiki-e/cargo-llvm-cov" = "0.9.1"
 
 [hooks]
 postinstall = { task = "hooks" }
@@ -54,3 +57,23 @@ run = "cargo clippy --locked --all-targets -- -D warnings"
 [tasks.test]
 description = "Run the test suite"
 run = "cargo test --locked"
+
+[tasks."test:cov"]
+description = "Run the test suite with a coverage summary (cargo-llvm-cov)"
+run = "cargo llvm-cov --locked"
+
+[tasks.deny]
+description = "Audit dependencies: advisories, licenses, bans and sources (deny.toml)"
+run = "cargo deny --locked check"
+
+[tasks.typos]
+description = "Check spelling in sources and docs"
+run = "typos"
+
+[tasks.lint]
+description = "Run every static check"
+depends = ["fmt:check", "clippy", "typos", "deny"]
+
+[tasks.ci]
+description = "Run the same checks as the develop CI workflow"
+depends = ["lint", "test:cov", "build"]
