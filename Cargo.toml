@@ -1,0 +1,17 @@
+[package]
+name = "colonnade"
+version = "0.0.0"
+edition = "2024"
+description = "A cross-platform database manager for many DBMS"
+license = "MIT"
+authors = ["Florian Maunier"]
+repository = "https://github.com/fmauNeko/colonnade"
+readme = "README.md"
+publish = false
+
+[dependencies]
+gpui-kit = "0.7.3"
+
+[dev-dependencies]
+gpui-kit = { version = "0.7.3", features = ["test-support"] }
+
