@@ -39,7 +39,7 @@ case "$target" in
     ditto -c -k --keepParent "$app" "$archive"
     ;;
   *-linux-*)
-    cp target/release/colonnade packaging/linux/io.github.fmauneko.colonnade.desktop \
+    cp target/release/colonnade packaging/linux/ovh.dissidence.colonnade.desktop \
       LICENSE README.md "$stage/"
     archive="dist/${name}.tar.gz"
     tar -czf "$archive" -C "$(dirname "$stage")" "$name"

@@ -12,7 +12,7 @@ const APP_NAME: &str = "Colonnade";
 
 /// Reverse-DNS identifier shared by the macOS bundle, the Wayland `app_id`
 /// and the Linux desktop entry.
-const APP_ID: &str = "io.github.fmauneko.colonnade";
+const APP_ID: &str = "ovh.dissidence.colonnade";
 
 actions!(colonnade, [Quit]);
 
