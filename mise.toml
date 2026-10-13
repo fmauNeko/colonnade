@@ -3,6 +3,19 @@ min_version = "2026.10.0"
 
 [tools]
 rust = { version = "1.99.0", profile = "minimal", components = ["rustfmt", "clippy", "llvm-tools"] }
+cocogitto = "7.0.0"
+
+[hooks]
+postinstall = { task = "hooks" }
+
+[tasks.hooks]
+description = "Install the git hooks declared in cog.toml (commit-msg: Conventional Commits)"
+run = "cog install-hook --all --overwrite"
+
+[tasks."lint:commits"]
+description = "Check that every commit in a git range follows Conventional Commits"
+usage = 'arg "[range]" help="git revision range to check" default="origin/develop..HEAD"'
+run = 'cog check "${usage_range}"'
 
 [tasks."deps:linux"]
 description = "Install the system libraries GPUI needs to build on Debian/Ubuntu"

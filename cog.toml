@@ -1,0 +1,10 @@
+# Cocogitto only enforces Conventional Commits here: release-please owns
+# versions, tags and the changelog, so `cog bump` is never used.
+ignore_merge_commits = true
+
+# Installed by `mise run hooks`, which runs automatically after `mise install`.
+[git_hooks.commit-msg]
+script = """#!/bin/sh
+set -e
+exec mise exec -- cog verify --ignore-merge-commits --ignore-fixup-commits --file "$1"
+"""
