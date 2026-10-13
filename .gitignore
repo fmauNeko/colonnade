@@ -22,3 +22,31 @@ rustc-ice-*.txt
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Release archives built by `mise run package`
+/dist/
+
+# Coverage reports
+lcov.info
+*.profraw
+
+# Local env files
+.env
+.env.local
+
+# IDEs and editors
+/.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# Misc
+.DS_Store
+
+# oh-my-openagent
+.omo/
+.ignore
+.opencode/
