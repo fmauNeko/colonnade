@@ -1,0 +1,117 @@
+name: Development push and PR
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Git hooks are a local development aid; skip the postinstall hook in CI.
+  MISE_NO_HOOKS: "1"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  commits:
+    name: Conventional commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    env:
+      # Install and enable only the tools this job needs (mise run would
+      # otherwise auto-install every tool in mise.toml).
+      MISE_ENABLE_TOOLS: cocogitto
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          version: 2026.10.9
+          cache_key_prefix: mise-v1-${{ github.job }}
+
+      - name: Check commit messages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: mise run lint:commits "${BASE_SHA}..${HEAD_SHA}"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          version: 2026.10.9
+
+      - name: Install Linux build dependencies
+        run: mise run deps:linux
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Run lint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: mise run lint
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    needs: [lint]
+    env:
+      MISE_ENABLE_TOOLS: rust,github:taiki-e/cargo-llvm-cov
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          version: 2026.10.9
+          cache_key_prefix: mise-v1-${{ github.job }}
+
+      - name: Install Linux build dependencies
+        run: mise run deps:linux
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Run unit tests with coverage
+        run: mise run test:cov
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    needs: [lint]
+    env:
+      MISE_ENABLE_TOOLS: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          version: 2026.10.9
+          cache_key_prefix: mise-v1-${{ github.job }}
+
+      - name: Install Linux build dependencies
+        run: mise run deps:linux
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Build
+        run: mise run build
