@@ -2,7 +2,7 @@
 min_version = "2026.10.0"
 
 [tools]
-rust = { version = "1.99.0", profile = "minimal", components = ["rustfmt", "clippy", "llvm-tools"] }
+rust = { version = "1.99.1", profile = "minimal", components = ["rustfmt", "clippy", "llvm-tools"] }
 cocogitto = "7.0.0"
 typos = "1.51.1"
 actionlint = "1.7.12"
