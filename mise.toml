@@ -49,6 +49,14 @@ description = "Package the release build into dist/ (archive + SHA-256), see scr
 shell = "bash -c"
 run = "bash script/package.sh"
 
+[tasks."db:up"]
+description = "Start the PostgreSQL, MySQL and MariaDB test servers (Docker Compose)"
+run = "docker compose -f compose.yaml up -d --wait"
+
+[tasks."db:down"]
+description = "Stop the test database servers and delete their data"
+run = "docker compose -f compose.yaml down -v"
+
 [tasks.fmt]
 description = "Format Rust sources"
 run = "cargo fmt --all"
