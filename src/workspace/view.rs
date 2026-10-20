@@ -1,0 +1,1 @@
+//! Single-window workspace view.
