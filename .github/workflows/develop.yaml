@@ -92,6 +92,66 @@ jobs:
       - name: Run unit tests with coverage
         run: mise run test:cov
 
+  db-tests:
+    name: Database tests
+    runs-on: ubuntu-24.04
+    needs: [lint]
+    env:
+      MISE_ENABLE_TOOLS: rust
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: colonnade
+          POSTGRES_PASSWORD: colonnade
+          POSTGRES_DB: colonnade
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U colonnade -d colonnade"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: colonnade
+          MYSQL_DATABASE: colonnade
+          MYSQL_USER: colonnade
+          MYSQL_PASSWORD: colonnade
+        ports:
+          - 53306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -ucolonnade -pcolonnade"
+          --health-interval 2s --health-timeout 3s --health-retries 60
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: colonnade
+          MARIADB_DATABASE: colonnade
+          MARIADB_USER: colonnade
+          MARIADB_PASSWORD: colonnade
+        ports:
+          - 53307:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 2s --health-timeout 3s --health-retries 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+        with:
+          version: 2026.10.9
+          cache_key_prefix: mise-v1-${{ github.job }}
+
+      - name: Install Linux build dependencies
+        run: mise run deps:linux
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Run database driver tests
+        run: mise run test:db
+
   build:
     name: Build
     runs-on: ubuntu-24.04
