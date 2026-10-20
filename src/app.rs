@@ -652,6 +652,47 @@ mod tests {
     }
 
     #[gpui_kit::test]
+    async fn keychain_warning_reaches_the_user_once(cx: &mut TestAppContext) {
+        // Given: a keychain-backed connection and a locked keychain.
+        let fx = setup(cx);
+        let id = cx.update(|cx| {
+            let store = cx.global::<GlobalConnectionStore>().0.clone();
+            store
+                .update(cx, |s, cx| {
+                    s.add_connection(
+                        cx,
+                        ConnectionProfile::new(
+                            "Vault",
+                            Driver::Postgres,
+                            Endpoint::Server {
+                                host: "db.test".into(),
+                                port: 5432,
+                                user: "ada".into(),
+                                database: None,
+                                tls: TlsMode::default(),
+                            },
+                            PasswordStorage::Keychain,
+                        ),
+                        DropPosition::RootEnd,
+                    )
+                })
+                .unwrap()
+        });
+        fx.services.secrets.fail_with("locked");
+        // When: connecting, which warns that the password could not be read.
+        let task = ui(cx, &fx, |window, cx| {
+            let sessions = cx.global::<crate::sessions::GlobalSessions>().0.clone();
+            sessions.update(cx, |s, cx| s.ensure_connected(id, window, cx))
+        });
+        drop(task.await);
+        cx.run_until_parked();
+        // Then: the keychain warning is delivered exactly once.
+        let notices = fx.services.prompts.notices();
+        assert_eq!(notices.len(), 1);
+        assert_eq!(notices[0].level, NoticeLevel::Warning);
+    }
+
+    #[gpui_kit::test]
     fn system_theme_follows_dark_appearance(cx: &mut TestAppContext) {
         // Given: the default System selection.
         let _fx = setup(cx);

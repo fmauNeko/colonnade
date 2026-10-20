@@ -402,8 +402,7 @@ fn warn(cx: &mut AsyncWindowContext, message: String) {
     // A notice remains observable even if its originating window was closed.
     let notice = warning(message);
     let sessions = gpui_kit::AsyncApp::update(cx, |cx| cx.global::<GlobalSessions>().0.clone());
-    sessions.update(cx, |_, cx| cx.emit(SessionEvent::Notice(notice.clone())));
-    drop(cx.update(|window, cx| prompts::notify(window, cx, notice)));
+    sessions.update(cx, |_, cx| cx.emit(SessionEvent::Notice(notice)));
 }
 
 async fn resolve_password(
@@ -856,7 +855,16 @@ mod tests {
         assert!(window.update(|w, cx| f.connect(w, cx)).await.is_ok());
         // Then: fallback succeeds with a warning.
         assert_eq!(f.prompts.password_requests().len(), 1);
-        assert_eq!(f.prompts.notices()[0].level, NoticeLevel::Warning);
+        let events = f.events.borrow();
+        let levels: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                SessionEvent::Notice(n) => Some(n.level),
+                SessionEvent::StatusChanged(_) | SessionEvent::ChildrenChanged(..) => None,
+            })
+            .collect();
+        assert_eq!(levels, vec![NoticeLevel::Warning]);
+        assert_eq!(f.prompts.notices().len(), 0);
     }
 
     #[gpui_kit::test]
