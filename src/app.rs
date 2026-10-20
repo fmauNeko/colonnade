@@ -297,9 +297,9 @@ pub fn request_quit(cx: &mut App) -> Task<QuitOutcome> {
         return Task::ready(QuitOutcome::Cancelled);
     }
     cx.global_mut::<QuitInFlight>().0 = true;
-    let task = begin_quit(cx);
     cx.spawn(async move |cx| {
-        let outcome = task.await;
+        // Action dispatch temporarily removes its window from App; prompt after it returns.
+        let outcome = cx.update(begin_quit).await;
         match outcome {
             QuitOutcome::Quit => {}
             QuitOutcome::Cancelled => cx.update(|cx| cx.global_mut::<QuitInFlight>().0 = false),
@@ -639,6 +639,36 @@ mod tests {
         });
         // Then: its tabs are closed by the application wiring.
         assert_eq!(tab_count(cx), 0);
+    }
+
+    #[gpui_kit::test]
+    fn quit_shortcut_cancel_preserves_dirty_tabs(cx: &mut TestAppContext) {
+        // Given: a dirty query in the assembled window and a cancelled confirmation.
+        let fx = setup(cx);
+        dirty(cx);
+        fx.services.prompts.queue_confirm(ConfirmChoice::Cancel);
+        // When: the real keyboard binding dispatches Quit from the window.
+        ui(cx, &fx, |window, cx| window.press("secondary-q", cx));
+        cx.run_until_parked();
+        // Then: confirmation is requested and cancelling preserves the query.
+        assert_eq!(fx.services.prompts.confirm_requests().len(), 1);
+        assert_eq!(tab_count(cx), 1);
+        cx.update(|cx| assert!(!cx.global::<QuitInFlight>().0));
+    }
+
+    #[gpui_kit::test]
+    fn quit_action_confirm_closes_dirty_tabs(cx: &mut TestAppContext) {
+        // Given: dirty SQL and an accepted confirmation.
+        let fx = setup(cx);
+        dirty(cx);
+        fx.services.prompts.queue_confirm(ConfirmChoice::Confirm);
+        // When: the menu's action is dispatched through the real window.
+        cx.dispatch_action(fx.window, Quit);
+        cx.run_until_parked();
+        // Then: confirmation is requested and the dirty tab is discarded.
+        assert_eq!(fx.services.prompts.confirm_requests().len(), 1);
+        assert_eq!(tab_count(cx), 0);
+        cx.update(|cx| assert!(cx.global::<QuitInFlight>().0));
     }
 
     #[gpui_kit::test]
