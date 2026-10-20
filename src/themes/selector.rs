@@ -7,6 +7,8 @@
 
 use gpui_kit::TestSupportExt as _;
 use gpui_kit::base::actions::{Confirm, SelectDown, SelectUp};
+use gpui_kit::component::button::Button;
+use gpui_kit::component::dialog::DialogFooter;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::{ActiveTheme as _, ThemeMode, WindowExt as _};
 use gpui_kit::prelude::*;
@@ -287,6 +289,14 @@ pub fn open(window: &mut Window, cx: &mut App) {
             .title("Theme")
             .width(px(480.))
             .child(selector.clone())
+            .footer(
+                DialogFooter::new().child(Button::new("dialog-cancel").label("Cancel").on_click(
+                    |_, window, cx| {
+                        revert_preview(window, cx);
+                        window.close_dialog(cx);
+                    },
+                )),
+            )
             .on_close(|_, window, cx| revert_preview(window, cx))
     });
 }
@@ -506,6 +516,25 @@ mod tests {
         assert_eq!(visible_name(cx), "Sample Night");
         let text = std::fs::read_to_string(env.paths.settings_file()).unwrap();
         assert!(text.contains("Sample Night"));
+    }
+
+    #[gpui_kit::test]
+    fn cancel_button_reverts_preview(cx: &mut TestAppContext) {
+        // Given: an open selector with a previewed theme.
+        let env = start(cx, &[("b.json", ZED)], &theme(ThemeModeSetting::Light));
+        open_selector(cx, &env);
+        press(cx, &env, "down");
+        assert_ne!(visible_name(cx), "Default Light");
+        // When: clicking the cancel button.
+        cx.update_window(env.window, |_, window, cx| {
+            window.within("dialog").click("dialog-cancel", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        // Then: the dialog is closed, the original theme is back and nothing was saved.
+        assert!(!row_visible(cx, &env, "Sample Day"));
+        assert_eq!(visible_name(cx), "Default Light");
+        assert_eq!(saved(cx).theme, theme(ThemeModeSetting::Light));
     }
 
     #[gpui_kit::test]
