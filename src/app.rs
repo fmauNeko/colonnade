@@ -118,7 +118,7 @@ fn init_workspace(cx: &mut App, paths: &ConfigPaths) {
     query_tab::view::init(cx);
     sidebar::view::init(cx);
     workspace::tab_strip::init(cx);
-    cx.set_global(windows::WindowRegistry::default());
+    windows::init(cx);
     let connections = cx
         .global::<catalog::store::GlobalConnectionStore>()
         .0
@@ -129,6 +129,7 @@ fn init_workspace(cx: &mut App, paths: &ConfigPaths) {
             catalog::store::ConnectionStoreEvent::ConnectionRemoved(id) => {
                 let tabs = cx.global::<GlobalTabStore>().0.clone();
                 tabs.update(cx, |s, cx| s.close_connection_tabs(*id, cx));
+                windows::connection_removed(*id, cx);
             }
             catalog::store::ConnectionStoreEvent::Changed
             | catalog::store::ConnectionStoreEvent::ConnectionAdded(_)
@@ -147,8 +148,9 @@ fn init_workspace(cx: &mut App, paths: &ConfigPaths) {
         }
         if *window_mode {
             let mode = settings.read(cx).settings().window_mode;
-            let tabs = cx.global::<GlobalTabStore>().0.clone();
-            tabs.update(cx, |s, cx| s.set_mode(mode, cx));
+            if let Err(error) = windows::apply_window_mode(mode, cx) {
+                notify(cx, warning(error.to_string()));
+            }
         }
     })
     .detach();
@@ -777,14 +779,14 @@ mod tests {
                 })
                 .unwrap();
         });
-        // Then: routing changes without opening connection windows in task 26.
+        // Then: routing changes and the connection receives its own window.
         cx.update(|cx| {
             assert_eq!(
                 cx.global::<GlobalTabStore>().0.read(cx).mode(),
                 WindowMode::PerConnection
             );
         });
-        assert_eq!(cx.windows().len(), 1);
+        assert_eq!(cx.windows().len(), 2);
     }
 
     #[cfg(target_os = "linux")]

@@ -198,6 +198,18 @@ impl WorkspaceView {
     }
 }
 
+pub(crate) fn window_title(key: WindowKey, cx: &gpui_kit::App) -> String {
+    match key {
+        WindowKey::Main => "Colonnade".into(),
+        WindowKey::Connection(id) => cx
+            .global::<GlobalConnectionStore>()
+            .0
+            .read(cx)
+            .profile(id)
+            .map_or_else(|| "Colonnade".into(), |p| format!("{} — Colonnade", p.name)),
+    }
+}
+
 impl Render for WorkspaceView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (title, color) = match self.window_key {
@@ -212,7 +224,7 @@ impl Render for WorkspaceView {
                     |p| (p.name.clone(), Some(p.color.effective())),
                 ),
         };
-        window.set_window_title(&title);
+        window.set_window_title(&window_title(self.window_key, cx));
         let tint = chrome_tint(self.window_key, cx);
         let accent = tint.map(|t| t.accent);
         self.sidebar
