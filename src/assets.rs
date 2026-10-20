@@ -7,7 +7,7 @@ use gpui_kit::{AssetSource, Result, SharedString};
 
 gpui_kit::assets::icon_assets!(
     pub ColonnadeIcons,
-    [CircleStop, Database, Plug, Server, Table, Unplug]
+    [CircleStop, Database, FolderPlus, FolderTree, Plug, Server, SquareStop, Table, Unplug]
 );
 
 /// Application asset source: the extra Colonnade icons first, then the GPUI Kit defaults.
@@ -45,8 +45,8 @@ impl AssetSource for AppAssets {
 
 #[cfg(test)]
 mod tests {
-    use gpui_kit::AssetSource as _;
     use gpui_kit::assets::IconName;
+    use gpui_kit::{AssetSource as _, SharedString};
 
     use super::AppAssets;
 
@@ -62,6 +62,38 @@ mod tests {
         // Then: both resolve to bytes.
         assert!(matches!(extra, Ok(Some(_))));
         assert!(matches!(default, Ok(Some(_))));
+    }
+
+    #[test]
+    fn application_icons_resolve() {
+        // Given: every icon used by the application's views.
+        let icons = [
+            IconName::RefreshCw,
+            IconName::CircleAlert,
+            IconName::Table,
+            IconName::Eye,
+            IconName::SquareTerminal,
+            IconName::Close,
+            IconName::Play,
+            IconName::SquareStop,
+            IconName::FolderOpen,
+            IconName::Folder,
+            IconName::Database,
+            IconName::FolderTree,
+            IconName::TriangleAlert,
+            IconName::ChevronDown,
+            IconName::ChevronRight,
+            IconName::Plus,
+            IconName::FolderPlus,
+        ];
+        // When: loading the paths through the production asset source.
+        let missing: Vec<_> = icons
+            .into_iter()
+            .map(IconName::path)
+            .filter(|path| AppAssets.load(path).unwrap().is_none())
+            .collect();
+        // Then: no view renders a missing glyph.
+        assert_eq!(missing, Vec::<SharedString>::new());
     }
 
     #[test]
