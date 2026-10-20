@@ -5,6 +5,8 @@
 //! Enter or a click confirms and saves; Escape (or any other close) re-applies
 //! the saved selection.
 
+// allow: SIZE_OK - the selector's adjacent headless scenarios share its integration harness.
+
 use gpui_kit::TestSupportExt as _;
 use gpui_kit::base::actions::{Confirm, SelectDown, SelectUp};
 use gpui_kit::component::button::Button;
@@ -354,6 +356,8 @@ mod tests {
         .unwrap();
         let prompts = cx.update(|cx| {
             gpui_kit::init(cx);
+            // Dialog hit targets must not move on the wall clock between test frames.
+            cx.set_reduce_motion(true);
             crate::settings::init(cx, &paths);
             catalog::init(cx, &paths);
             let prompts = install_scripted(cx);
