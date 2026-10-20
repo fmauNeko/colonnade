@@ -310,6 +310,7 @@ mod tests {
         std::fs::write(paths.settings_file(), settings_file).unwrap();
         cx.update(|cx| {
             gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
             crate::settings::init(cx, &paths);
             catalog::init(cx, &paths);
             install_scripted(cx);
