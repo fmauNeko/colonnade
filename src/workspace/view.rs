@@ -12,6 +12,7 @@ use crate::catalog::{ops::DropPosition, store::GlobalConnectionStore};
 use crate::sessions::GlobalSessions;
 use crate::settings::{GlobalSettings, ThemeModeSetting};
 use crate::sidebar::view::SidebarView;
+use crate::tint::{chrome_tint, title_bar_colors};
 use crate::{app, dialogs, settings_ui, themes, windows};
 use gpui_kit::component::resizable::{h_resizable, resizable_panel};
 use gpui_kit::component::{ActiveTheme as _, TitleBar, h_flex, v_flex};
@@ -66,6 +67,8 @@ impl WorkspaceView {
             cx.notify();
         })
         .detach();
+        cx.observe_window_activation(window, |_, _, cx| cx.notify())
+            .detach();
         window
             .observe_window_appearance(|window, cx| {
                 let mode = cx
@@ -98,6 +101,12 @@ impl WorkspaceView {
     #[must_use]
     pub const fn window_key(&self) -> WindowKey {
         self.window_key
+    }
+
+    /// The sidebar's current accent (tint) color.
+    #[cfg(test)]
+    pub(crate) fn sidebar_accent(&self, cx: &gpui_kit::App) -> Option<gpui_kit::Hsla> {
+        self.sidebar.read(cx).accent()
     }
 
     fn new_query(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -204,6 +213,11 @@ impl Render for WorkspaceView {
                 ),
         };
         window.set_window_title(&title);
+        let tint = chrome_tint(self.window_key, cx);
+        let accent = tint.map(|t| t.accent);
+        self.sidebar
+            .update(cx, |sidebar, cx| sidebar.set_accent(accent, cx));
+        let title_colors = tint.map(|t| title_bar_colors(&t, window.is_window_active()));
         let content = self.active_content(window, cx);
         let status = status_bar::render(self.window_key, cx);
         v_flex()
@@ -232,6 +246,9 @@ impl Render for WorkspaceView {
             .on_action(cx.listener(|_, _: &app::SelectTheme, w, cx| themes::selector::open(w, cx)))
             .child(
                 TitleBar::new()
+                    .when_some(title_colors, |bar, (background, foreground)| {
+                        bar.bg(background).text_color(foreground)
+                    })
                     .on_close_window(|_, w, cx| windows::request_window_close(w, cx))
                     .child(
                         h_flex()
@@ -260,6 +277,9 @@ impl Render for WorkspaceView {
                                         div()
                                             .flex()
                                             .items_stretch()
+                                            .when_some(accent, |strip, accent| {
+                                                strip.border_b(px(2.)).border_color(accent)
+                                            })
                                             .flex_none()
                                             .min_h(px(36.))
                                             .child(self.tab_strip.clone()),

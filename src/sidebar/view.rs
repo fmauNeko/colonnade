@@ -178,9 +178,24 @@ pub struct SidebarView {
     selected: Option<SidebarNodeKey>,
     hover: Option<(SidebarNodeKey, DropZone)>,
     visible: Vec<Row>,
+    accent: Option<Hsla>,
 }
 
 impl SidebarView {
+    /// Sets the 2 px right-edge accent of a tinted connection window.
+    pub fn set_accent(&mut self, accent: Option<Hsla>, cx: &mut Context<Self>) {
+        if self.accent != accent {
+            self.accent = accent;
+            cx.notify();
+        }
+    }
+
+    /// The current right-edge accent, if tinted.
+    #[must_use]
+    pub const fn accent(&self) -> Option<Hsla> {
+        self.accent
+    }
+
     /// A sidebar over the global connection store and sessions.
     pub fn new(cx: &mut Context<Self>) -> Self {
         let store = connection_store(cx);
@@ -194,6 +209,7 @@ impl SidebarView {
             selected: None,
             hover: None,
             visible: Vec::new(),
+            accent: None,
         }
     }
 
@@ -888,9 +904,13 @@ impl Render for SidebarView {
             self.list(rows, cx).into_any_element()
         };
         let background = cx.theme().sidebar;
+        let accent = self.accent;
         v_flex()
             .size_full()
             .bg(background)
+            .when_some(accent, |this, accent| {
+                this.border_r(px(2.)).border_color(accent)
+            })
             .key_context(KEY_CONTEXT)
             .track_focus(&self.focus)
             .on_action(
