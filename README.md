@@ -2,7 +2,46 @@
 
 Colonnade is a database manager for many DBMS. It is cross-platform and written in Rust, with a native, GPU-accelerated interface built on [GPUI](https://gpui.rs) through [GPUI Kit](https://gpui-kit.com).
 
-> Colonnade is at a very early stage: the application only opens its main window for now.
+## Features
+
+- **Connections sidebar**: saved connections in nested folders, ordered freely with drag and drop (or Alt+Up / Alt+Down). Create, edit, duplicate and delete connections and folders from forms and context menus; paste a connection URL to fill the form; test a connection before saving it.
+- **Connection colors**: each connection gets a color generated from its driver, host and port (or SQLite file path). Pick any color or a preset, or reset to the generated one.
+- **Databases**: PostgreSQL, MySQL, MariaDB and SQLite. Expanding a connection lazily loads its databases, schemas, tables and views.
+- **Table browsing**: a virtualized grid, loaded 200 rows at a time while scrolling, with server-side sort on header click and refresh.
+- **Grouped tabs**: table and query tabs from many connections at once, kept together under a header strip in each connection's color.
+- **Query tabs**: an SQL editor highlighted for the connection's dialect. Run the selection or the whole text (`secondary-enter`), stop a running query (`secondary-.`), and get a result grid (up to 10,000 rows) or an affected-row count per statement.
+- **Zed-like themes**: built-in Default Light and Default Dark, plus Kit and Zed theme files (see [Themes](#themes)).
+- **Window per connection**: an optional mode where each connection gets its own window, its title bar, status bar, sidebar edge and active tab tinted Peacock-style from the connection color. Switching modes keeps every open tab.
+
+`secondary` is Cmd on macOS and Ctrl elsewhere.
+
+Not available yet: editing table data, filters, export, SQL autocomplete, SSH tunnels, SQL Server, and restoring tabs after a restart.
+
+### Notes
+
+- MySQL 8 accounts using `caching_sha2_password` need TLS (on by default); RSA key exchange is disabled. Accounts with `mysql_native_password` work without TLS.
+- SQLite files are opened as they are: Colonnade never creates a missing file and never changes its journal mode.
+- Closing a tab, a tab group or a window, deleting a connection, or quitting through Colonnade's own Quit command (menu or `secondary-q`) asks before discarding typed SQL or a running query. A quit started outside the app (Dock or taskbar Quit, logout, shutdown, `kill`) can't be intercepted.
+
+## Configuration
+
+Colonnade stores its configuration as human-readable JSON in one directory, picked in this order:
+
+1. `COLONNADE_CONFIG_DIR`, when set and non-empty.
+2. `$XDG_CONFIG_HOME/colonnade`, when `XDG_CONFIG_HOME` is set to an absolute path (on every platform).
+3. `~/.config/colonnade` on macOS and Linux, `%APPDATA%\Colonnade` on Windows.
+
+| Path               | Content                                              |
+| ------------------ | ---------------------------------------------------- |
+| `settings.json`    | Theme mode and choices, window mode                  |
+| `connections.json` | Connections, folders, their order and expansion      |
+| `themes/`          | Your theme files                                     |
+
+Passwords never go to these files: each connection keeps its password in the OS keychain, or asks for it each time (kept in memory until you disconnect). Writes are atomic. A file that can't be read is moved aside as `<name>.corrupt-<timestamp>` and reported. A file written by a newer Colonnade version is used read-only and never overwritten.
+
+## Themes
+
+Drop Kit theme files or Zed theme-family files into `themes/`: they appear without a restart and style both the UI and SQL highlighting. Invalid files are reported, not fatal. Open the theme selector with `secondary-k secondary-t`: it previews themes live, Esc reverts and Enter saves. The theme mode follows the system or forces light or dark, with separate light and dark choices. Settings open with `secondary-,`.
 
 ## Download
 
@@ -50,7 +89,9 @@ System requirements:
 | `lint:commits [range]` | Conventional Commits check of a git range (default `origin/develop..HEAD`)     |
 | `lint`                | Every static check above except `lint:commits`                                  |
 | `test` / `test:cov`   | Tests / tests with a coverage summary                                           |
-| `ci`                  | `lint`, `test:cov` and `build`: what CI runs on develop                         |
+| `db:up` / `db:down`   | Start / stop and wipe the PostgreSQL, MySQL and MariaDB test servers (Docker)    |
+| `test:db`             | Driver tests against the `db:up` servers (Docker required); fails if none ran   |
+| `ci`                  | `lint`, `test:cov` and `build`; CI also runs `test:db` in its `db-tests` job     |
 
 ### Commits
 
