@@ -166,7 +166,7 @@ pub fn install_default(cx: &mut App) {
 #[derive(Default)]
 pub struct ScriptedPrompts {
     passwords: RefCell<VecDeque<Option<PasswordAnswer>>>,
-    confirms: RefCell<VecDeque<ConfirmChoice>>,
+    confirms: RefCell<VecDeque<oneshot::Receiver<ConfirmChoice>>>,
     password_log: RefCell<Vec<PasswordRequest>>,
     confirm_log: RefCell<Vec<ConfirmRequest>>,
     notice_log: RefCell<Vec<Notice>>,
@@ -181,7 +181,14 @@ impl ScriptedPrompts {
 
     /// Queues the answer to the next confirmation.
     pub fn queue_confirm(&self, choice: ConfirmChoice) {
-        self.confirms.borrow_mut().push_back(choice);
+        self.confirms.borrow_mut().push_back(resolved(choice));
+    }
+
+    /// Holds the next confirmation until its sender is answered or dropped.
+    pub fn hold_confirm(&self) -> oneshot::Sender<ConfirmChoice> {
+        let (sender, receiver) = oneshot::channel();
+        self.confirms.borrow_mut().push_back(receiver);
+        sender
     }
 
     /// Password requests seen so far.
@@ -214,7 +221,7 @@ pub fn install_scripted(cx: &mut App) -> Rc<ScriptedPrompts> {
         confirm: Rc::new(move |_, _, req| {
             confirm.confirm_log.borrow_mut().push(req);
             let choice = confirm.confirms.borrow_mut().pop_front();
-            resolved(choice.unwrap_or(ConfirmChoice::Cancel))
+            choice.unwrap_or_else(|| resolved(ConfirmChoice::Cancel))
         }),
         notify: Rc::new(move |_, _, note| notice.notice_log.borrow_mut().push(note)),
     });

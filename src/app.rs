@@ -38,6 +38,10 @@ actions!(
 struct StartupNotices(Vec<Notice>);
 impl Global for StartupNotices {}
 
+#[derive(Default)]
+struct QuitInFlight(bool);
+impl Global for QuitInFlight {}
+
 /// Result of the cancellable, app-initiated quit flow.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuitOutcome {
@@ -104,6 +108,7 @@ fn init_settings_and_themes(cx: &mut App, paths: &ConfigPaths) {
 }
 
 fn init_workspace(cx: &mut App, paths: &ConfigPaths) {
+    cx.set_global(QuitInFlight::default());
     catalog::store::init(cx, paths);
     sessions::init(cx);
     let mode = cx
@@ -288,6 +293,22 @@ pub(crate) fn show_load_notices(window: &mut gpui_kit::Window, cx: &mut App) {
 
 /// Confirms all unsaved/running work before closing tabs and quitting.
 pub fn request_quit(cx: &mut App) -> Task<QuitOutcome> {
+    if cx.global::<QuitInFlight>().0 {
+        return Task::ready(QuitOutcome::Cancelled);
+    }
+    cx.global_mut::<QuitInFlight>().0 = true;
+    let task = begin_quit(cx);
+    cx.spawn(async move |cx| {
+        let outcome = task.await;
+        match outcome {
+            QuitOutcome::Quit => {}
+            QuitOutcome::Cancelled => cx.update(|cx| cx.global_mut::<QuitInFlight>().0 = false),
+        }
+        outcome
+    })
+}
+
+fn begin_quit(cx: &mut App) -> Task<QuitOutcome> {
     let store = cx.global::<GlobalTabStore>().0.clone();
     let tabs: Vec<_> = store.read(cx).tabs().iter().map(|t| t.id).collect();
     let reasons = store.read(cx).close_reasons(&tabs, cx);
@@ -649,6 +670,37 @@ mod tests {
             crate::db::runtime::shutdown(cx);
             crate::db::runtime::shutdown(cx);
         });
+    }
+
+    #[gpui_kit::test]
+    fn repeated_quit_starts_only_one_confirmation(cx: &mut TestAppContext) {
+        // Given: unsaved SQL and a confirmation held open across executor turns.
+        let fx = setup(cx);
+        dirty(cx);
+        let reply = fx.services.prompts.hold_confirm();
+        cx.update(request_quit).detach();
+        cx.run_until_parked();
+        // When: another Quit action arrives while the first confirmation is open.
+        cx.update(request_quit).detach();
+        cx.run_until_parked();
+        // Then: only one prompt was opened.
+        assert_eq!(fx.services.prompts.confirm_requests().len(), 1);
+        reply.send(ConfirmChoice::Cancel).unwrap();
+        cx.run_until_parked();
+    }
+
+    #[gpui_kit::test]
+    async fn quit_can_be_retried_after_cancel(cx: &mut TestAppContext) {
+        // Given: a cancelled quit.
+        let fx = setup(cx);
+        dirty(cx);
+        fx.services.prompts.queue_confirm(ConfirmChoice::Cancel);
+        assert_eq!(cx.update(request_quit).await, QuitOutcome::Cancelled);
+        // When: requesting Quit again.
+        fx.services.prompts.queue_confirm(ConfirmChoice::Cancel);
+        cx.update(request_quit).await;
+        // Then: a second confirmation is shown.
+        assert_eq!(fx.services.prompts.confirm_requests().len(), 2);
     }
 
     #[gpui_kit::test]
