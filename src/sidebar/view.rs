@@ -27,7 +27,7 @@ use crate::catalog::model::{CatalogItem, ConnectionId};
 use crate::catalog::ops::{self, DropPosition, NodeRef};
 use crate::catalog::store::{ConnectionStore, GlobalConnectionStore};
 use crate::color::Rgb;
-use crate::db::model::DbError;
+use crate::db::model::{DbError, ObjectPath};
 use crate::dialogs::{color, connection, folder};
 use crate::prompts::{Notice, NoticeLevel, notify};
 use crate::sessions::{ConnectionSessions, GlobalSessions, SessionStatus};
@@ -43,7 +43,8 @@ gpui_kit::actions!(
         Activate,
         DeleteSelected,
         MoveUp,
-        MoveDown
+        MoveDown,
+        RefreshSelected
     ]
 );
 
@@ -65,6 +66,7 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("secondary-backspace", DeleteSelected, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-up", MoveUp, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-down", MoveDown, Some(KEY_CONTEXT)),
+        KeyBinding::new("f5", RefreshSelected, Some(KEY_CONTEXT)),
     ]);
 }
 
@@ -122,6 +124,7 @@ pub fn menu_items(kind: RowKind, read_only: bool) -> Vec<MenuItemSpec> {
         RowKind::Connection => &[
             (MenuAction::ConnectToggle, "Connect"),
             (MenuAction::NewQuery, "New Query"),
+            (MenuAction::Refresh, "Refresh"),
             (MenuAction::Edit, "Edit…"),
             (MenuAction::Duplicate, "Duplicate"),
             (MenuAction::ChangeColor, "Change Color…"),
@@ -160,6 +163,19 @@ fn connection_store(cx: &App) -> Entity<ConnectionStore> {
 
 fn sessions(cx: &App) -> Entity<ConnectionSessions> {
     cx.global::<GlobalSessions>().0.clone()
+}
+
+/// Whether `candidate` is a branch strictly below `ancestor` in the catalog tree.
+fn is_below(candidate: &ObjectPath, ancestor: &ObjectPath) -> bool {
+    match (candidate, ancestor) {
+        (ObjectPath::Root, _)
+        | (_, ObjectPath::Schema { .. })
+        | (ObjectPath::Database { .. }, ObjectPath::Database { .. }) => false,
+        (_, ObjectPath::Root) => true,
+        (ObjectPath::Schema { database, .. }, ObjectPath::Database { name }) => {
+            database.as_deref() == Some(name.as_str())
+        }
+    }
 }
 
 fn node_ref(key: &SidebarNodeKey) -> Option<NodeRef> {
@@ -279,7 +295,7 @@ impl SidebarView {
 
     fn load(key: &SidebarNodeKey, window: &mut Window, cx: &mut Context<Self>) {
         let (connection, path) = match key {
-            SidebarNodeKey::Connection(id) => (*id, crate::db::model::ObjectPath::Root),
+            SidebarNodeKey::Connection(id) => (*id, ObjectPath::Root),
             SidebarNodeKey::Object { connection, node } => {
                 let Some(path) = node.children_path() else {
                     return;
@@ -367,15 +383,49 @@ impl SidebarView {
         }
     }
 
-    fn refresh(key: &SidebarNodeKey, window: &mut Window, cx: &mut Context<Self>) {
-        let SidebarNodeKey::Object { connection, node } = key else {
-            return;
+    fn refresh(&self, key: &SidebarNodeKey, window: &mut Window, cx: &mut Context<Self>) {
+        let (connection, path) = match key {
+            SidebarNodeKey::Connection(id) => {
+                if !matches!(
+                    sessions(cx).read(cx).status(*id),
+                    SessionStatus::Connected(_)
+                ) {
+                    return;
+                }
+                (*id, ObjectPath::Root)
+            }
+            SidebarNodeKey::Object { connection, node } => (
+                *connection,
+                node.children_path().unwrap_or_else(|| node.parent_path()),
+            ),
+            SidebarNodeKey::Folder(_) | SidebarNodeKey::Placeholder { .. } => return,
         };
-        let path = node.children_path().unwrap_or_else(|| node.parent_path());
-        let task = sessions(cx).update(cx, |s, cx| {
-            s.refresh_children(*connection, path, window, cx)
-        });
+        let below: Vec<ObjectPath> = self
+            .expanded
+            .iter()
+            .filter_map(|expanded| match expanded {
+                SidebarNodeKey::Object {
+                    connection: other,
+                    node,
+                } if *other == connection => node.children_path(),
+                SidebarNodeKey::Folder(_)
+                | SidebarNodeKey::Connection(_)
+                | SidebarNodeKey::Object { .. }
+                | SidebarNodeKey::Placeholder { .. } => None,
+            })
+            .filter(|candidate| is_below(candidate, &path))
+            .collect();
+        let task =
+            sessions(cx).update(cx, |s, cx| s.refresh_children(connection, path, window, cx));
         Self::report(task, window, cx);
+        for descendant in below {
+            // A failure shows as the descendant's inline error row; the top branch raised the notice.
+            sessions(cx)
+                .update(cx, |s, cx| {
+                    s.refresh_children(connection, descendant, window, cx)
+                })
+                .detach();
+        }
     }
 
     fn connect_toggle(&mut self, id: ConnectionId, window: &mut Window, cx: &mut Context<Self>) {
@@ -432,7 +482,7 @@ impl SidebarView {
                 self.connect_toggle(*id, window, cx);
             }
             (MenuAction::NewQuery, _) => Self::open_query(key, cx),
-            (MenuAction::Refresh, _) => Self::refresh(key, window, cx),
+            (MenuAction::Refresh, _) => self.refresh(key, window, cx),
             (MenuAction::Open, _) => Self::open_table(key, cx),
             (
                 MenuAction::NewConnectionHere
@@ -692,7 +742,11 @@ impl SidebarView {
                 } else {
                     spec.label
                 };
-                menu.item(PopupMenuItem::new(label).disabled(spec.disabled).on_click(
+                let disabled = spec.disabled
+                    || (action == MenuAction::Refresh
+                        && matches!(key, SidebarNodeKey::Connection(_))
+                        && !connected);
+                menu.item(PopupMenuItem::new(label).disabled(disabled).on_click(
                     move |_, window, cx| {
                         view.update(cx, |this, cx| this.perform(action, &key, window, cx));
                     },
@@ -931,6 +985,11 @@ impl Render for SidebarView {
             .on_action(cx.listener(|this, _: &DeleteSelected, window, cx| {
                 if let Some(key) = this.selected.clone() {
                     this.perform(MenuAction::Delete, &key, window, cx);
+                }
+            }))
+            .on_action(cx.listener(|this, _: &RefreshSelected, window, cx| {
+                if let Some(key) = this.selected.clone() {
+                    this.perform(MenuAction::Refresh, &key, window, cx);
                 }
             }))
             .on_action(cx.listener(|this, _: &MoveUp, _, cx| this.move_selected(false, cx)))
@@ -1521,6 +1580,181 @@ mod tests {
             window.try_find("dialog").is_some()
         })
         .await;
+    }
+
+    // --- refresh ------------------------------------------------------------------------------
+
+    fn perform(cx: &mut TestAppContext, fx: &Fx, action: MenuAction, key: &SidebarNodeKey) {
+        cx.update_window(fx.window, |_, window, cx| {
+            fx.view
+                .update(cx, |view, cx| view.perform(action, key, window, cx));
+        })
+        .expect("window");
+        cx.run_until_parked();
+    }
+
+    #[gpui_kit::test]
+    fn every_browsable_row_kind_offers_refresh(_cx: &mut TestAppContext) {
+        // Given / When / Then: each catalog row kind lists an enabled Refresh item.
+        for kind in [
+            RowKind::Connection,
+            RowKind::Database,
+            RowKind::Schema,
+            RowKind::Table,
+            RowKind::View,
+        ] {
+            assert!(
+                menu_items(kind, true)
+                    .iter()
+                    .any(|i| i.action == MenuAction::Refresh && !i.disabled),
+                "{kind:?}"
+            );
+        }
+    }
+
+    #[gpui_kit::test]
+    fn refreshing_a_schema_shows_new_tables(cx: &mut TestAppContext) {
+        // Given: the tables of `app.public` are loaded and a table is created behind our back.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.add_table("fresh");
+        assert!(!names(cx, &fx).contains(&"fresh".to_owned()));
+        // When: refreshing the schema.
+        perform(
+            cx,
+            &fx,
+            MenuAction::Refresh,
+            &schema_key(id, "app", "public"),
+        );
+        // Then: the new table is listed and the schema is still expanded.
+        assert!(names(cx, &fx).contains(&"fresh".to_owned()));
+        assert!(
+            rows(cx, &fx)
+                .iter()
+                .any(|r| r.label == "public" && r.expanded)
+        );
+    }
+
+    #[gpui_kit::test]
+    fn refreshing_a_table_reloads_its_schema(cx: &mut TestAppContext) {
+        // Given: loaded tables and a new one on the server.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.add_table("fresh");
+        // When: refreshing one of the listed tables.
+        perform(
+            cx,
+            &fx,
+            MenuAction::Refresh,
+            &table(id, "orders", Some("app"), Some("public")),
+        );
+        // Then: the sibling list changed.
+        assert!(names(cx, &fx).contains(&"fresh".to_owned()));
+    }
+
+    #[gpui_kit::test]
+    fn refreshing_a_database_reloads_expanded_descendants_and_keeps_them_open(
+        cx: &mut TestAppContext,
+    ) {
+        // Given: `app` and its `public` schema are expanded, a table is then created.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.add_table("fresh");
+        // When: refreshing the database.
+        perform(cx, &fx, MenuAction::Refresh, &db_key(id, "app"));
+        // Then: the schema's tables are reloaded and the schema is still expanded.
+        assert!(names(cx, &fx).contains(&"fresh".to_owned()));
+        assert!(
+            rows(cx, &fx)
+                .iter()
+                .any(|r| r.label == "public" && r.expanded)
+        );
+    }
+
+    #[gpui_kit::test]
+    fn refreshing_a_connection_reloads_the_root_and_keeps_expansion(cx: &mut TestAppContext) {
+        // Given: an expanded connection with `app` expanded, then a database is created.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.add_database("extra");
+        fx.server.add_table("fresh");
+        // When: refreshing the connection row.
+        perform(
+            cx,
+            &fx,
+            MenuAction::Refresh,
+            &SidebarNodeKey::Connection(id),
+        );
+        // Then: the new database and table appear; expanded nodes stay expanded.
+        let all = names(cx, &fx);
+        assert!(all.contains(&"extra".to_owned()));
+        assert!(all.contains(&"fresh".to_owned()));
+        assert!(
+            rows(cx, &fx)
+                .iter()
+                .any(|r| r.label == "public" && r.expanded)
+        );
+    }
+
+    #[gpui_kit::test]
+    fn refreshing_a_disconnected_connection_does_nothing(cx: &mut TestAppContext) {
+        // Given: a connection that was never connected.
+        let (fx, id) = one_connection(cx);
+        // When: refreshing it.
+        perform(
+            cx,
+            &fx,
+            MenuAction::Refresh,
+            &SidebarNodeKey::Connection(id),
+        );
+        // Then: the server was not asked anything.
+        assert_eq!(fx.server.children_requests().len(), 0);
+    }
+
+    #[gpui_kit::test]
+    fn a_failed_refresh_shows_the_error_row_and_a_notice(cx: &mut TestAppContext) {
+        // Given: loaded tables and a server whose next lookup fails.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.fail_children(DbError::Query {
+            message: "boom".into(),
+            code: None,
+        });
+        let notices_before = fx.prompts.notices().len();
+        // When: refreshing the schema.
+        perform(
+            cx,
+            &fx,
+            MenuAction::Refresh,
+            &schema_key(id, "app", "public"),
+        );
+        // Then: the schema's child is an error row and one error notice was raised.
+        let all = rows(cx, &fx);
+        let at = all
+            .iter()
+            .position(|r| r.label == "public")
+            .expect("schema");
+        assert_eq!(
+            all[at + 1].kind,
+            RowKind::Placeholder(PlaceholderKind::Error)
+        );
+        let notices = fx.prompts.notices();
+        assert_eq!(notices.len(), notices_before + 1);
+        assert_eq!(notices[notices_before].level, NoticeLevel::Error);
+    }
+
+    #[gpui_kit::test]
+    fn f5_refreshes_the_selected_row(cx: &mut TestAppContext) {
+        // Given: loaded tables, the schema row selected, and a new table on the server.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.add_table("fresh");
+        click(cx, &fx, row_id(&schema_key(id, "app", "public")));
+        // When: pressing F5.
+        ui(cx, &fx, |window, cx| window.press("f5", cx));
+        cx.run_until_parked();
+        // Then: the table list was reloaded.
+        assert!(names(cx, &fx).contains(&"fresh".to_owned()));
     }
 
     // --- 1,000 tables -------------------------------------------------------------------------

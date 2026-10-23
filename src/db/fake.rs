@@ -205,6 +205,8 @@ pub struct FakeServer {
     state: Arc<Mutex<ServerState>>,
     queries: HoldGate,
     pages: HoldGate,
+    extra_tables: Arc<Mutex<Vec<String>>>,
+    extra_databases: Arc<Mutex<Vec<String>>>,
 }
 impl FakeServer {
     /// Builds `app` tables/views and `analytics` events sample data.
@@ -215,7 +217,17 @@ impl FakeServer {
             state: Arc::default(),
             queries: HoldGate::default(),
             pages: HoldGate::default(),
+            extra_tables: Arc::default(),
+            extra_databases: Arc::default(),
         }
+    }
+    /// Makes later catalog lookups list one more table in every schema or database.
+    pub fn add_table(&self, name: &str) {
+        lock(&self.extra_tables).push(name.to_owned());
+    }
+    /// Makes later root lookups list one more database.
+    pub fn add_database(&self, name: &str) {
+        lock(&self.extra_databases).push(name.to_owned());
     }
     /// Records every requested page, including failed and held requests.
     #[must_use]
@@ -288,19 +300,24 @@ impl FakeServer {
     }
 
     fn objects(&self, database: Option<&str>) -> Vec<ObjectNode> {
-        let names = if database == Some("analytics") {
-            vec![("events", TableKind::Table)]
+        let mut names = if database == Some("analytics") {
+            vec![("events".to_owned(), TableKind::Table)]
         } else {
             vec![
-                ("orders", TableKind::Table),
-                ("users", TableKind::Table),
-                ("active_users", TableKind::View),
+                ("orders".to_owned(), TableKind::Table),
+                ("users".to_owned(), TableKind::Table),
+                ("active_users".to_owned(), TableKind::View),
             ]
         };
+        names.extend(
+            lock(&self.extra_tables)
+                .iter()
+                .map(|name| (name.clone(), TableKind::Table)),
+        );
         names
             .into_iter()
             .map(|(name, kind)| ObjectNode {
-                name: name.into(),
+                name: name.clone(),
                 kind: match kind {
                     TableKind::Table => ObjectKind::Table,
                     TableKind::View => ObjectKind::View,
@@ -312,7 +329,7 @@ impl FakeServer {
                         Dialect::Postgres => Some("public".into()),
                         Dialect::MySql | Dialect::Sqlite => None,
                     },
-                    name: name.into(),
+                    name,
                     kind,
                 }),
             })
@@ -431,10 +448,12 @@ impl DbBackend for FakeServer {
             None => match (self.dialect, path) {
                 (Dialect::Postgres | Dialect::MySql, ObjectPath::Root) => Ok(["analytics", "app"]
                     .into_iter()
+                    .map(str::to_owned)
+                    .chain(lock(&self.extra_databases).iter().cloned())
                     .map(|name| ObjectNode {
                         kind: ObjectKind::Database,
-                        name: name.into(),
-                        children: Some(ObjectPath::Database { name: name.into() }),
+                        children: Some(ObjectPath::Database { name: name.clone() }),
+                        name,
                         object: None,
                     })
                     .collect()),
