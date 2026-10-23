@@ -67,6 +67,8 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("alt-up", MoveUp, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-down", MoveDown, Some(KEY_CONTEXT)),
         KeyBinding::new("f5", RefreshSelected, Some(KEY_CONTEXT)),
+        // Cmd+R / Ctrl+R: F5 is a media key on some keyboards.
+        KeyBinding::new("secondary-r", RefreshSelected, Some(KEY_CONTEXT)),
     ]);
 }
 
@@ -1752,6 +1754,20 @@ mod tests {
         click(cx, &fx, row_id(&schema_key(id, "app", "public")));
         // When: pressing F5.
         ui(cx, &fx, |window, cx| window.press("f5", cx));
+        cx.run_until_parked();
+        // Then: the table list was reloaded.
+        assert!(names(cx, &fx).contains(&"fresh".to_owned()));
+    }
+
+    #[gpui_kit::test]
+    fn secondary_r_refreshes_the_selected_row(cx: &mut TestAppContext) {
+        // Given: loaded tables, the schema row selected, and a new table on the server.
+        let (fx, id) = one_connection(cx);
+        expand_to_tables(cx, &fx, id);
+        fx.server.add_table("fresh");
+        click(cx, &fx, row_id(&schema_key(id, "app", "public")));
+        // When: pressing secondary-r.
+        ui(cx, &fx, |window, cx| window.press("secondary-r", cx));
         cx.run_until_parked();
         // Then: the table list was reloaded.
         assert!(names(cx, &fx).contains(&"fresh".to_owned()));
