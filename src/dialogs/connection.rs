@@ -778,7 +778,14 @@ fn row(
                 .text_color(cx.theme().muted_foreground)
                 .child(label),
         )
-        .child(v_flex().flex_1().gap_1().child(control).children(error))
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .gap_1()
+                .child(control)
+                .children(error),
+        )
         .into_any_element()
 }
 
@@ -887,6 +894,7 @@ impl ConnectionForm {
             TestState::Err(message) => Some((cx.theme().danger, message.clone())),
         };
         let control = h_flex()
+            .w_full()
             .gap_3()
             .items_center()
             .child(
@@ -898,6 +906,8 @@ impl ConnectionForm {
                 div()
                     .id("connection-test-result")
                     .test_support()
+                    .flex_1()
+                    .min_w_0()
                     .text_sm()
                     .text_color(color)
                     .child(text)
@@ -1443,6 +1453,50 @@ mod tests {
             crate::db::model::ConnectParams::Postgres(server)
                 if server.password == Some(Secret::new("tp".into()))
         ));
+    }
+
+    #[gpui_kit::test]
+    async fn test_result_stays_inside_the_dialog_when_the_message_is_long(cx: &mut TestAppContext) {
+        // Given: the form, and long outcomes (words, then one unbroken token).
+        let env = setup(cx);
+        let form = open_blank(cx, &env).await;
+        let words = "PostgreSQL 17.6 (Debian 17.6-1.pgdg120+1) on aarch64-unknown-linux-gnu, \
+                     compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit and then some more words"
+            .to_owned();
+        let token = "x".repeat(400);
+        for state in [
+            TestState::Ok(words.clone()),
+            TestState::Err(words),
+            TestState::Err(token),
+        ] {
+            // When: the test outcome is shown.
+            cx.update(|cx| {
+                form.update(cx, |form, cx| {
+                    form.test = state;
+                    cx.notify();
+                });
+            });
+            let (dialog, result, button) = cx
+                .update_window(env.handle, |_, window, cx| {
+                    window.render_frame(cx);
+                    (
+                        window.within("dialog").find("connection-name").bounds(),
+                        window
+                            .within("dialog")
+                            .find("connection-test-result")
+                            .bounds(),
+                        window.within("dialog").find("connection-test").bounds(),
+                    )
+                })
+                .expect("window");
+            // Then: the message and the button stay within the form column.
+            assert!(result.right() <= dialog.right(), "{result:?} vs {dialog:?}");
+            assert!(button.right() <= dialog.right(), "{button:?} vs {dialog:?}");
+            assert!(
+                result.left() >= button.right() - gpui_kit::px(1.),
+                "{result:?} vs {button:?}"
+            );
+        }
     }
 
     fn pick(cx: &mut TestAppContext, env: &Env, select: &'static str, downs: usize) {
