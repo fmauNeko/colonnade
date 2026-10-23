@@ -14,13 +14,14 @@ use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{Editor, EditorState, InputEvent};
 use gpui_kit::component::resizable::{resizable_panel, v_resizable};
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::table::{DataTable, TableState};
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, App, Context, Entity, FocusHandle, IntoElement, KeyBinding, Render, SharedString,
-    Subscription, Task, TestSupportExt as _, Window, div, px,
+    AnyElement, App, Context, Entity, FocusHandle, IntoElement, KeyBinding, Render, ScrollHandle,
+    SharedString, Subscription, Task, TestSupportExt as _, Window, div, px,
 };
 
 use super::state::{QueryTabState, QueryTabs, RunState, install};
@@ -81,6 +82,7 @@ pub struct QueryTabView {
     focus: FocusHandle,
     grid: Option<GridCache>,
     ticker: Option<Task<()>>,
+    error_scroll: ScrollHandle,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -114,6 +116,7 @@ impl QueryTabView {
             focus: cx.focus_handle(),
             grid: None,
             ticker: None,
+            error_scroll: ScrollHandle::new(),
             _subscriptions: subscriptions,
         }
     }
@@ -346,9 +349,16 @@ impl QueryTabView {
                 .size_full()
                 .min_w_0()
                 .overflow_y_scroll()
+                .track_scroll(&self.error_scroll)
+                .vertical_scrollbar(&self.error_scroll)
                 .p_3()
                 .text_color(danger)
-                .child(error.to_string())
+                .child(
+                    div()
+                        .id("query-error-text")
+                        .test_support()
+                        .child(error.to_string()),
+                )
                 .into_any_element(),
             RunState::Cancelled { .. } => div()
                 .id("query-cancelled")
@@ -374,13 +384,15 @@ impl Render for QueryTabView {
             .on_action(cx.listener(|this, _: &CancelQuery, _, cx| this.stop(cx)))
             .child(self.toolbar(&run, cx))
             .child(
-                v_resizable("query-split")
-                    .child(
-                        resizable_panel()
-                            .size(EDITOR_PANEL_HEIGHT)
-                            .child(Editor::new(&self.editor).size_full()),
-                    )
-                    .child(resizable_panel().child(results)),
+                div().flex_1().min_h_0().child(
+                    v_resizable("query-split")
+                        .child(
+                            resizable_panel()
+                                .size(EDITOR_PANEL_HEIGHT)
+                                .child(Editor::new(&self.editor).size_full()),
+                        )
+                        .child(resizable_panel().child(results)),
+                ),
             )
     }
 }
@@ -391,8 +403,8 @@ mod tests {
     use gpui_kit::test::TestWindowExt as _;
     use gpui_kit::{
         AnyView, AnyWindowHandle, App, AppContext as _, Bounds, Context, Entity, IntoElement,
-        ParentElement as _, Point, Render, Styled as _, TestAppContext, Window, WindowBounds,
-        WindowOptions, div, px, size,
+        ParentElement as _, Point, Render, ScrollDelta, Styled as _, TestAppContext, Window,
+        WindowBounds, WindowOptions, div, point, px, size,
     };
 
     use super::QueryTabView;
@@ -636,6 +648,55 @@ mod tests {
         // Then: the error stays inside the 900 px window instead of running past its edge.
         let bounds = ui(cx, &open, |window, _| window.find("query-error").bounds());
         assert!(bounds.right() <= px(900.), "error bounds: {bounds:?}");
+    }
+
+    #[gpui_kit::test]
+    fn tall_query_error_scrolls_to_its_end_inside_the_pane(cx: &mut TestAppContext) {
+        // Given: a statement failing with a 300-line message, far taller than the pane.
+        let fx = setup(cx, Driver::Postgres);
+        let message = (0..300)
+            .map(|line| format!("error detail line {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let error = DbError::Query {
+            message,
+            code: None,
+        };
+        fx.server.script_query("BAD".into(), Err(error));
+        let open = open_view(cx, &fx);
+        type_sql(cx, &open, "BAD");
+        // When: running it.
+        click(cx, &open, "query-run");
+        // Then: the scroll container ends within the window and the text overflows it.
+        let (pane, text) = ui(cx, &open, |window, _| {
+            (
+                window.find("query-error").bounds(),
+                window.find("query-error-text").bounds(),
+            )
+        });
+        assert!(pane.bottom() <= px(700.), "pane bounds: {pane:?}");
+        assert!(text.bottom() > pane.bottom(), "text bounds: {text:?}");
+        // When: wheel-scrolling down repeatedly.
+        for _ in 0..40 {
+            ui(cx, &open, |window, cx| {
+                window.scroll(
+                    "query-error",
+                    ScrollDelta::Pixels(point(px(0.), px(-2_000.))),
+                    cx,
+                );
+            });
+        }
+        // Then: the end of the text has been brought inside the pane.
+        let (pane, text) = ui(cx, &open, |window, _| {
+            (
+                window.find("query-error").bounds(),
+                window.find("query-error-text").bounds(),
+            )
+        });
+        assert!(
+            text.bottom() <= pane.bottom() + px(1.),
+            "pane {pane:?}, text {text:?}"
+        );
     }
 
     #[gpui_kit::test]

@@ -3,13 +3,14 @@
 // allow: SIZE_OK - the plan keeps the view, its grid delegate and its tests in this file.
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::table::{ColumnSort, DataTable, TableDelegate, TableState};
 use gpui_kit::component::{ActiveTheme as _, Icon, Sizable as _, h_flex, v_flex};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, App, Context, Empty, Entity, IntoElement, Render, SharedString, Subscription,
-    TestSupportExt as _, Window, div, px,
+    AnyElement, App, Context, Empty, Entity, IntoElement, Render, ScrollHandle, SharedString,
+    Subscription, TestSupportExt as _, Window, div, px,
 };
 
 use super::state::{TableTabEvent, TableTabState, TableTabs};
@@ -131,6 +132,7 @@ impl TableDelegate for GridDelegate {
 pub struct TableTabView {
     state: Entity<TableTabState>,
     table: Entity<TableState<GridDelegate>>,
+    error_scroll: ScrollHandle,
     _subscription: Subscription,
 }
 
@@ -156,6 +158,7 @@ impl TableTabView {
         Self {
             state,
             table,
+            error_scroll: ScrollHandle::new(),
             _subscription: subscription,
         }
     }
@@ -224,11 +227,14 @@ impl TableTabView {
                 .child(
                     div()
                         .id("table-error-message")
+                        .test_support()
                         .flex_1()
                         .min_w_0()
                         .max_h_full()
                         .overflow_y_scroll()
-                        .child(message),
+                        .track_scroll(&self.error_scroll)
+                        .vertical_scrollbar(&self.error_scroll)
+                        .child(div().id("table-error-text").test_support().child(message)),
                 )
                 .child(
                     Button::new("table-retry")
@@ -466,6 +472,57 @@ mod tests {
             assert!(panel.right() <= px(800.), "panel bounds: {panel:?}");
             assert!(retry.right() <= px(800.), "retry bounds: {retry:?}");
         });
+    }
+
+    #[gpui_kit::test]
+    fn tall_page_error_scrolls_to_its_end_inside_the_panel(cx: &mut TestAppContext) {
+        // Given: a server whose next page fails with a 300-line message.
+        let message = (0..300)
+            .map(|line| format!("error detail line {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let tab = open_with(cx, |fx| {
+            fx.server.fail_page(DbError::Query {
+                message,
+                code: None,
+            });
+        });
+        // Then: the message viewport stays within the 160 px panel limit, below the grid top.
+        let (panel, viewport, text, grid) = ui(cx, &tab, |window, _| {
+            (
+                window.find("table-error").bounds(),
+                window.find("table-error-message").bounds(),
+                window.find("table-error-text").bounds(),
+                window.find("table-grid").bounds(),
+            )
+        });
+        assert!(panel.size.height <= px(160.), "panel bounds: {panel:?}");
+        assert!(
+            viewport.bottom() <= grid.top(),
+            "viewport {viewport:?}, grid {grid:?}"
+        );
+        assert!(text.bottom() > viewport.bottom(), "text bounds: {text:?}");
+        // When: wheel-scrolling down repeatedly.
+        for _ in 0..40 {
+            ui(cx, &tab, |window, cx| {
+                window.scroll(
+                    "table-error-message",
+                    ScrollDelta::Pixels(point(px(0.), px(-2_000.))),
+                    cx,
+                );
+            });
+        }
+        // Then: the end of the text is inside the viewport.
+        let (viewport, text) = ui(cx, &tab, |window, _| {
+            (
+                window.find("table-error-message").bounds(),
+                window.find("table-error-text").bounds(),
+            )
+        });
+        assert!(
+            text.bottom() <= viewport.bottom() + px(1.),
+            "viewport {viewport:?}, text {text:?}"
+        );
     }
 
     #[gpui_kit::test]
