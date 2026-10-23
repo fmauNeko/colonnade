@@ -110,6 +110,7 @@ struct ThemeSelector {
     rows: Vec<ThemeRow>,
     highlighted: Option<usize>,
     _filter_subscription: Subscription,
+    _catalog_subscription: Subscription,
 }
 
 impl ThemeSelector {
@@ -120,11 +121,17 @@ impl ThemeSelector {
                 this.refilter(cx);
             }
         });
+        // A catalog reload (file watcher) changes the rows under an open selector.
+        let catalog_subscription =
+            cx.observe_global_in::<ThemeCatalog>(window, |this, window, cx| {
+                this.catalog_changed(window, cx);
+            });
         let mut selector = Self {
             filter,
             rows: Vec::new(),
             highlighted: None,
             _filter_subscription: subscription,
+            _catalog_subscription: catalog_subscription,
         };
         selector.refilter(cx);
         let current = cx.theme().theme_name().clone();
@@ -141,6 +148,25 @@ impl ThemeSelector {
         self.rows = filtered_rows(ThemeCatalog::global(cx).entries(), &text);
         self.highlighted = kept.and_then(|name| self.rows.iter().position(|row| row.name == name));
         cx.notify();
+    }
+
+    /// Rebuilds the rows after a catalog reload, keeping the filter text and
+    /// the highlighted row. A highlighted theme that vanished drops the
+    /// preview (the saved selection comes back); one that survived is
+    /// re-previewed, as its file may have changed.
+    fn catalog_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let had_highlight = self.highlighted.is_some();
+        self.refilter(cx);
+        match self.highlighted.and_then(|ix| self.rows.get(ix)) {
+            Some(row) => {
+                let entry = ThemeCatalog::global(cx).find(&row.name).cloned();
+                if let Some(entry) = entry {
+                    catalog::preview(cx, &entry);
+                }
+            }
+            None if had_highlight => revert_preview(window, cx),
+            None => {}
+        }
     }
 
     fn step(&mut self, step: Step, cx: &mut Context<Self>) {
@@ -582,6 +608,83 @@ mod tests {
         let notices = env.prompts.notices();
         assert_eq!(notices.len(), 1);
         assert_eq!(notices[0].level, NoticeLevel::Info);
+    }
+
+    fn drop_file(cx: &mut TestAppContext, env: &Env, name: &str, text: &str) {
+        std::fs::write(env.paths.themes_dir().join(name), text).unwrap();
+        cx.update(catalog::reload);
+        cx.run_until_parked();
+    }
+
+    #[gpui_kit::test]
+    fn new_file_appears_in_an_open_selector(cx: &mut TestAppContext) {
+        // Given: an open selector listing built-ins only.
+        let env = start(cx, &[], &theme(ThemeModeSetting::Light));
+        open_selector(cx, &env);
+        assert!(!row_visible(cx, &env, "Sample Day"));
+        // When: a theme file is dropped in and the catalog reloads.
+        drop_file(cx, &env, "b.json", ZED);
+        // Then: the new themes are rows of the same open selector.
+        assert!(row_visible(cx, &env, "Sample Day"));
+        assert!(row_visible(cx, &env, "Sample Night"));
+    }
+
+    #[gpui_kit::test]
+    fn removed_file_disappears_keeping_filter_and_revert(cx: &mut TestAppContext) {
+        // Given: a filter on "night" and the second match previewed.
+        let env = start(
+            cx,
+            &[("a.json", KIT), ("b.json", ZED)],
+            &theme(ThemeModeSetting::Light),
+        );
+        open_selector(cx, &env);
+        cx.update_window(env.window, |_, window, cx| {
+            window.within("dialog").click("theme-selector-filter", cx);
+            window.within("dialog").input("night", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        press(cx, &env, "down");
+        press(cx, &env, "down");
+        assert_eq!(visible_name(cx), "Sample Night");
+        // When: the previewed theme's file is deleted and the catalog reloads.
+        std::fs::remove_file(env.paths.themes_dir().join("b.json")).unwrap();
+        cx.update(catalog::reload);
+        cx.run_until_parked();
+        // Then: its row is gone, the filter still applies and the preview is dropped.
+        assert!(!row_visible(cx, &env, "Sample Night"));
+        assert!(row_visible(cx, &env, "Kit Night"));
+        assert!(!row_visible(cx, &env, "Default Light"));
+        assert_eq!(visible_name(cx), "Default Light");
+        // And: Escape still leaves the saved theme in place.
+        press(cx, &env, "escape");
+        assert_eq!(visible_name(cx), "Default Light");
+        assert_eq!(saved(cx).theme, theme(ThemeModeSetting::Light));
+    }
+
+    #[gpui_kit::test]
+    fn invalid_new_file_shows_in_the_error_list(cx: &mut TestAppContext) {
+        // Given: an open selector without load errors.
+        let env = start(cx, &[], &theme(ThemeModeSetting::Light));
+        open_selector(cx, &env);
+        cx.update_window(env.window, |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.try_find("theme-selector-errors").is_none());
+        })
+        .unwrap();
+        // When: a malformed theme file is dropped in and the catalog reloads.
+        drop_file(cx, &env, "c.json", BROKEN);
+        // Then: the error list appears with a row per error.
+        let expected = cx.update(|cx| ThemeCatalog::global(cx).errors().len());
+        assert_ne!(expected, 0);
+        cx.update_window(env.window, |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.try_find("theme-selector-errors").is_some());
+            for index in 0..expected {
+                assert!(window.try_find(("theme-selector-error", index)).is_some());
+            }
+        })
+        .unwrap();
     }
 
     #[gpui_kit::test]
