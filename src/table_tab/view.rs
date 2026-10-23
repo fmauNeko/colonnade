@@ -9,7 +9,7 @@ use gpui_kit::component::{ActiveTheme as _, Icon, Sizable as _, h_flex, v_flex};
 use gpui_kit::prelude::*;
 use gpui_kit::{
     AnyElement, App, Context, Empty, Entity, IntoElement, Render, SharedString, Subscription,
-    TestSupportExt as _, Window, div,
+    TestSupportExt as _, Window, div, px,
 };
 
 use super::state::{TableTabEvent, TableTabState, TableTabs};
@@ -213,16 +213,27 @@ impl TableTabView {
             h_flex()
                 .id("table-error")
                 .test_support()
+                .w_full()
+                .max_h(px(160.))
                 .gap_2()
                 .px_3()
                 .py_2()
                 .items_center()
                 .text_color(cx.theme().danger)
                 .child(Icon::new(IconName::CircleAlert).xsmall())
-                .child(div().flex_1().child(message))
+                .child(
+                    div()
+                        .id("table-error-message")
+                        .flex_1()
+                        .min_w_0()
+                        .max_h_full()
+                        .overflow_y_scroll()
+                        .child(message),
+                )
                 .child(
                     Button::new("table-retry")
                         .label("Retry")
+                        .flex_shrink_0()
                         .xsmall()
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.state.update(cx, |state, cx| state.retry(window, cx));
@@ -436,6 +447,24 @@ mod tests {
         assert_eq!(rows(cx, &tab), 200);
         ui(cx, &tab, |window, _| {
             assert!(window.try_find("table-error").is_none());
+        });
+    }
+
+    #[gpui_kit::test]
+    fn long_page_error_wraps_inside_the_window(cx: &mut TestAppContext) {
+        // Given: a server whose next page fails with a very long, multi-word message.
+        let tab = open_with(cx, |fx| {
+            fx.server.fail_page(DbError::Query {
+                message: "permission denied for relation users ".repeat(60),
+                code: None,
+            });
+        });
+        // Then: the error panel and its retry button stay inside the 800 px window.
+        ui(cx, &tab, |window, _| {
+            let panel = window.find("table-error").bounds();
+            let retry = window.find("table-retry").bounds();
+            assert!(panel.right() <= px(800.), "panel bounds: {panel:?}");
+            assert!(retry.right() <= px(800.), "retry bounds: {retry:?}");
         });
     }
 

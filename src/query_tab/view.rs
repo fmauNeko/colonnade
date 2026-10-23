@@ -343,6 +343,9 @@ impl QueryTabView {
             RunState::Failed { error, .. } => div()
                 .id("query-error")
                 .test_support()
+                .size_full()
+                .min_w_0()
+                .overflow_y_scroll()
                 .p_3()
                 .text_color(danger)
                 .child(error.to_string())
@@ -614,6 +617,25 @@ mod tests {
         assert!(shown(cx, &open, "query-error"));
         assert!(!shown(cx, &open, "query-result-grid"));
         assert!(enabled(cx, &open, "query-run"));
+    }
+
+    #[gpui_kit::test]
+    fn long_query_error_wraps_inside_the_window(cx: &mut TestAppContext) {
+        // Given: a statement failing with a very long, multi-word message.
+        let fx = setup(cx, Driver::Postgres);
+        let message = "relation does not exist near token ".repeat(60);
+        let error = DbError::Query {
+            message,
+            code: None,
+        };
+        fx.server.script_query("BAD".into(), Err(error));
+        let open = open_view(cx, &fx);
+        type_sql(cx, &open, "BAD");
+        // When: running it.
+        click(cx, &open, "query-run");
+        // Then: the error stays inside the 900 px window instead of running past its edge.
+        let bounds = ui(cx, &open, |window, _| window.find("query-error").bounds());
+        assert!(bounds.right() <= px(900.), "error bounds: {bounds:?}");
     }
 
     #[gpui_kit::test]
