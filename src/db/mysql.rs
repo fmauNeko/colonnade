@@ -538,12 +538,9 @@ mod tests {
             let fixture = Fixture::new(server).await;
             // When: querying its version.
             let version = fixture.backend.server_version().await.unwrap();
-            // Then: the expected engine answers.
-            assert!(version.contains(if server == SERVERS[0] {
-                "8.4"
-            } else {
-                "MariaDB"
-            }));
+            // Then: the expected engine answers, whatever its release.
+            assert!(version.starts_with(|c: char| c.is_ascii_digit()));
+            assert_eq!(version.contains("MariaDB"), server == SERVERS[1]);
             assert_eq!(fixture.backend.dialect(), Dialect::MySql);
             fixture.finish().await;
         }
