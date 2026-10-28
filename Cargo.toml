@@ -24,9 +24,9 @@ url = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]
-gpui-kit = { version = "0.8.0", features = ["test-support", "tree-sitter-sql"] }
-tempfile = "3"
-tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "time", "sync"] }
+gpui-kit = { version = "=0.8.1", features = ["test-support", "tree-sitter-sql"] }
+tempfile = "=3.27.0"
+tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "time", "sync"] }
 
 [lints.rust]
 unsafe_code = "forbid"
