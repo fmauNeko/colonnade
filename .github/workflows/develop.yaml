@@ -123,7 +123,7 @@ jobs:
           --health-cmd "mysqladmin ping -h 127.0.0.1 -ucolonnade -pcolonnade"
           --health-interval 2s --health-timeout 3s --health-retries 60
       mariadb:
-        image: mariadb:11.4
+        image: mariadb:11.8@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd
         env:
           MARIADB_ROOT_PASSWORD: colonnade
           MARIADB_DATABASE: colonnade
