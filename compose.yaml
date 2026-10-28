@@ -1,0 +1,41 @@
+name: colonnade-test
+
+services:
+  postgres:
+    image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
+    environment:
+      POSTGRES_USER: colonnade
+      POSTGRES_PASSWORD: colonnade
+      POSTGRES_DB: colonnade
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U colonnade -d colonnade"]
+      interval: 2s
+      retries: 30
+
+  mysql:
+    image: mysql:26.10@sha256:7b16ec7caa94ca7e92f4c5ec287de69d2e8738db056ceb629022951a6f6d910b
+    environment:
+      MYSQL_ROOT_PASSWORD: colonnade
+      MYSQL_DATABASE: colonnade
+      MYSQL_USER: colonnade
+      MYSQL_PASSWORD: colonnade
+    ports:
+      - "127.0.0.1:53306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ucolonnade", "-pcolonnade"]
+      retries: 60
+
+  mariadb:
+    image: mariadb:13.0@sha256:f4054da26e3a9dd6c8b5cc97363e544408b15c0fb369d7359c25dc04826eb6e1
+    environment:
+      MARIADB_ROOT_PASSWORD: colonnade
+      MARIADB_DATABASE: colonnade
+      MARIADB_USER: colonnade
+      MARIADB_PASSWORD: colonnade
+    ports:
+      - "127.0.0.1:53307:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      retries: 60

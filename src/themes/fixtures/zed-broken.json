@@ -1,0 +1,15 @@
+{
+  "name": "Broken Family",
+  "author": "Colonnade tests",
+  "themes": [
+    {
+      "name": "Fine",
+      "appearance": "dark",
+      "style": { "editor.background": "#101216", "text": "#dcdfe6" }
+    },
+    {
+      "name": "No Appearance",
+      "style": { "editor.background": "#f0f0f0", "text": "#202020" }
+    }
+  ]
+}

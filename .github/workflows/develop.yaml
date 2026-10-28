@@ -35,9 +35,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
-          version: 2026.10.9
+          version: 2026.10.22
           cache_key_prefix: mise-v1-${{ github.job }}
 
       - name: Check commit messages
@@ -54,14 +54,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
-          version: 2026.10.9
+          version: 2026.10.22
 
       - name: Install Linux build dependencies
         run: mise run deps:linux
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Run lint
         env:
@@ -79,18 +79,78 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
-          version: 2026.10.9
+          version: 2026.10.22
           cache_key_prefix: mise-v1-${{ github.job }}
 
       - name: Install Linux build dependencies
         run: mise run deps:linux
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Run unit tests with coverage
         run: mise run test:cov
+
+  db-tests:
+    name: Database tests
+    runs-on: ubuntu-24.04
+    needs: [lint]
+    env:
+      MISE_ENABLE_TOOLS: rust
+    services:
+      postgres:
+        image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
+        env:
+          POSTGRES_USER: colonnade
+          POSTGRES_PASSWORD: colonnade
+          POSTGRES_DB: colonnade
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U colonnade -d colonnade"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      mysql:
+        image: mysql:26.10@sha256:7b16ec7caa94ca7e92f4c5ec287de69d2e8738db056ceb629022951a6f6d910b
+        env:
+          MYSQL_ROOT_PASSWORD: colonnade
+          MYSQL_DATABASE: colonnade
+          MYSQL_USER: colonnade
+          MYSQL_PASSWORD: colonnade
+        ports:
+          - 53306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -ucolonnade -pcolonnade"
+          --health-interval 2s --health-timeout 3s --health-retries 60
+      mariadb:
+        image: mariadb:13.0@sha256:f4054da26e3a9dd6c8b5cc97363e544408b15c0fb369d7359c25dc04826eb6e1
+        env:
+          MARIADB_ROOT_PASSWORD: colonnade
+          MARIADB_DATABASE: colonnade
+          MARIADB_USER: colonnade
+          MARIADB_PASSWORD: colonnade
+        ports:
+          - 53307:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 2s --health-timeout 3s --health-retries 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          version: 2026.10.22
+          cache_key_prefix: mise-v1-${{ github.job }}
+
+      - name: Install Linux build dependencies
+        run: mise run deps:linux
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+
+      - name: Run database driver tests
+        run: mise run test:db
 
   build:
     name: Build
@@ -103,15 +163,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
-          version: 2026.10.9
+          version: 2026.10.22
           cache_key_prefix: mise-v1-${{ github.job }}
 
       - name: Install Linux build dependencies
         run: mise run deps:linux
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Build
         run: mise run build
