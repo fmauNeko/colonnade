@@ -2,7 +2,11 @@
 min_version = "2026.10.0"
 
 [tools]
-rust = { version = "1.99.1", profile = "minimal", components = ["rustfmt", "clippy", "llvm-tools"] }
+rust = { version = "1.99.1", profile = "minimal", components = [
+  "rustfmt",
+  "clippy",
+  "llvm-tools",
+] }
 cocogitto = "7.0.0"
 typos = "1.51.1"
 actionlint = "1.7.12"
@@ -49,6 +53,14 @@ description = "Package the release build into dist/ (archive + SHA-256), see scr
 shell = "bash -c"
 run = "bash script/package.sh"
 
+[tasks."db:up"]
+description = "Start the PostgreSQL, MySQL and MariaDB test servers (Docker Compose)"
+run = "docker compose -f compose.yaml up -d --wait"
+
+[tasks."db:down"]
+description = "Stop the test database servers and delete their data"
+run = "docker compose -f compose.yaml down -v"
+
 [tasks.fmt]
 description = "Format Rust sources"
 run = "cargo fmt --all"
@@ -68,6 +80,12 @@ run = "cargo test --locked"
 [tasks."test:cov"]
 description = "Run the test suite with a coverage summary (cargo-llvm-cov)"
 run = "cargo llvm-cov --locked"
+
+[tasks."test:db"]
+description = "Run the PostgreSQL, MySQL and MariaDB driver tests against the servers from db:up or CI"
+shell = "bash -c"
+run = "bash script/test-db.sh"
+env = { COLONNADE_TEST_PG_URL = "postgres://colonnade:colonnade@127.0.0.1:55432/colonnade", COLONNADE_TEST_MYSQL_URL = "mysql://colonnade:colonnade@127.0.0.1:53306/colonnade", COLONNADE_TEST_MARIADB_URL = "mysql://colonnade:colonnade@127.0.0.1:53307/colonnade" }
 
 [tasks.deny]
 description = "Audit dependencies: advisories, licenses, bans and sources (deny.toml)"

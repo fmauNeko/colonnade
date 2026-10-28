@@ -1,0 +1,53 @@
+{
+  "name": "Sample Family",
+  "author": "Colonnade tests",
+  "themes": [
+    {
+      "name": "Sample Day",
+      "appearance": "light",
+      "style": {
+        "background": "#e4e6ea",
+        "editor.background": "#f6f1e8",
+        "editor.foreground": "#2b2d33",
+        "text": "#2b2d33",
+        "text.muted": "#6b6f7a",
+        "text.accent": "#2f6fb5",
+        "border": "#c9ccd3",
+        "border.variant": "#d9dbe0",
+        "border.focused": null,
+        "panel.background": "#ebe7de",
+        "error": "#c0392b",
+        "players": [
+          { "cursor": "#2f6fb5", "selection": "#2f6fb540" }
+        ],
+        "syntax": {
+          "comment": { "color": "#8a8f9c", "font_style": "oblique", "font_weight": null },
+          "keyword": { "color": "#a23b8c", "font_style": "normal", "font_weight": 450 },
+          "string": { "color": "#3b7d4f", "font_style": "wavy", "font_weight": "bold" }
+        }
+      }
+    },
+    {
+      "name": "Sample Night",
+      "appearance": "dark",
+      "style": {
+        "background": "#1b1d23",
+        "editor.background": "#14161b",
+        "editor.foreground": "#d5d8df",
+        "text": "#d5d8df",
+        "text.muted": "#8b909c",
+        "text.accent": "#6aa9e9",
+        "border": "#2c3038",
+        "border.variant": "#23262d",
+        "panel.background": "#191b21",
+        "error": "#e06c5f",
+        "players": [
+          { "cursor": "#6aa9e9", "selection": "#6aa9e93d" }
+        ],
+        "syntax": {
+          "comment": { "color": "#5c6370", "font_style": "italic" }
+        }
+      }
+    }
+  ]
+}

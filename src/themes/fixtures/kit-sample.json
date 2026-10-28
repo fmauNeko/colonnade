@@ -1,0 +1,16 @@
+{
+  "name": "Kit Sample",
+  "author": "Colonnade tests",
+  "themes": [
+    {
+      "name": "Kit Night",
+      "mode": "dark",
+      "colors": {
+        "background": "#10151c",
+        "foreground": "#d6dde8",
+        "border": "#27303c",
+        "primary.background": "#4aa3a0"
+      }
+    }
+  ]
+}
