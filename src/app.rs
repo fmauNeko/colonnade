@@ -1,5 +1,6 @@
 //! Application bootstrap: global setup, key bindings, menus and the main window.
 
+use crate::keybindings;
 use crate::paths::ConfigPaths;
 use crate::prompts::{ConfirmChoice, ConfirmRequest, Notice, NoticeLevel};
 use crate::settings::{GlobalSettings, LoadNotice, SettingsEvent, WindowMode};
@@ -8,7 +9,7 @@ use crate::{
     catalog, db, dialogs, paths, prompts, query_tab, secrets, sessions, settings, sidebar,
     sql_dialects, table_tab, themes, windows, workspace,
 };
-use gpui_kit::{App, Global, KeyBinding, Menu, MenuItem, Task, WindowAppearance, actions};
+use gpui_kit::{App, Global, Menu, MenuItem, Task, WindowAppearance, actions};
 use std::sync::Arc;
 
 // allow: SIZE_OK - fixed four-file integration scope includes bootstrap and adjacent headless scenarios.
@@ -190,12 +191,10 @@ fn init_actions(cx: &mut App) {
     });
     cx.on_action(|_: &UseSingleWindow, cx| set_window_mode(cx, WindowMode::Single));
     cx.on_action(|_: &UseWindowPerConnection, cx| set_window_mode(cx, WindowMode::PerConnection));
-    cx.bind_keys([
-        KeyBinding::new("secondary-q", Quit, None),
-        KeyBinding::new("secondary-t", NewQuery, Some("Workspace")),
-        KeyBinding::new("secondary-,", OpenSettings, None),
-        KeyBinding::new("secondary-k secondary-t", SelectTheme, None),
-    ]);
+    keybindings::bind(cx, "secondary-q", Quit, None);
+    keybindings::bind(cx, "secondary-t", NewQuery, Some("Workspace"));
+    keybindings::bind(cx, "secondary-,", OpenSettings, None);
+    keybindings::bind(cx, "secondary-k secondary-t", SelectTheme, None);
     cx.set_menus([
         Menu::new(APP_NAME).items([
             MenuItem::action("Settings…", OpenSettings),

@@ -7,6 +7,7 @@ pub mod color;
 pub mod db;
 pub mod dialogs;
 pub mod grid;
+pub mod keybindings;
 pub mod paths;
 pub mod persist;
 pub mod prompts;

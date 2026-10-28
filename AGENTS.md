@@ -43,6 +43,7 @@ Always go through `mise run` / `mise exec --` so the pinned toolchain is used: m
 | `src/db/` | Database core: `model`, `sql` (statement builder), `backend` (traits), `factory` (driver selection), `runtime` (Tokio bridge), `postgres`, `mysql` (MySQL/MariaDB), `sqlite`, `fake` (test-only backend) |
 | `src/dialogs/` | Dialogs: `connection`, `folder`, `password`, `confirm`, `color` |
 | `src/grid.rs` | Shared result grid: Kit table columns, cell display, row delegate |
+| `src/keybindings.rs` | `bind`: key binding registration that resolves the `secondary-` alias for the host OS |
 | `src/paths.rs` | Config dir resolution (Zed-style, XDG-aware) and config file paths |
 | `src/persist.rs` | Atomic JSON persistence, corrupt-file backup, newer-version detection |
 | `src/prompts.rs` | Prompt hooks for passwords, confirmations and notices (scripted in tests) |
@@ -80,6 +81,7 @@ Always go through `mise run` / `mise exec --` so the pinned toolchain is used: m
 - Import GPUI through the Kit: `use gpui_kit::prelude::*;` plus explicit `gpui_kit::{...}` items. Styled components live in `gpui_kit::component`; theme colors come from `gpui_kit::component::ActiveTheme` (`cx.theme()`).
 - Call `gpui_kit::init(cx)` before using components, and open windows with `gpui_kit::open_window`, which mounts the Kit `Root`.
 - Define actions with `gpui_kit::actions!`.
+- Bind keys through `crate::keybindings::bind`, never `KeyBinding::new` with `secondary-` (it panics in GPUI >= 0.3.10; only `KeyBinding::load` resolves the alias). `window.press` in tests resolves `secondary-` already.
 - `gpui-kit` pins an exact `gpui-pre` snapshot of Zed's GPUI, so any update can change GPUI's API. Renovate never automerges it.
 - Docs: <https://gpui-kit.com> and <https://docs.rs/gpui-kit>.
 
