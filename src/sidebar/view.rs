@@ -7,6 +7,7 @@
 use std::collections::HashSet;
 use std::ops::Range;
 
+use crate::keybindings;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem};
@@ -15,8 +16,8 @@ use gpui_kit::component::{ActiveTheme as _, Disableable as _, Icon, Sizable as _
 use gpui_kit::prelude::*;
 use gpui_kit::{
     AnyElement, App, ClickEvent, Context, Div, DragMoveEvent, Entity, FocusHandle, Hsla,
-    IntoElement, KeyBinding, MouseButton, Render, Role, ScrollStrategy, SharedString,
-    TestSupportExt as _, UniformListScrollHandle, Window, div, px, uniform_list,
+    IntoElement, MouseButton, Render, Role, ScrollStrategy, SharedString, TestSupportExt as _,
+    UniformListScrollHandle, Window, div, px, uniform_list,
 };
 
 use super::dnd::{
@@ -56,20 +57,18 @@ const ROW_HEIGHT: f32 = 28.;
 
 /// Binds the sidebar keys in the [`KEY_CONTEXT`] key context.
 pub fn init(cx: &mut App) {
-    cx.bind_keys([
-        KeyBinding::new("up", SelectPrevious, Some(KEY_CONTEXT)),
-        KeyBinding::new("down", SelectNext, Some(KEY_CONTEXT)),
-        KeyBinding::new("left", CollapseOrParent, Some(KEY_CONTEXT)),
-        KeyBinding::new("right", ExpandOrChild, Some(KEY_CONTEXT)),
-        KeyBinding::new("enter", Activate, Some(KEY_CONTEXT)),
-        KeyBinding::new("delete", DeleteSelected, Some(KEY_CONTEXT)),
-        KeyBinding::new("secondary-backspace", DeleteSelected, Some(KEY_CONTEXT)),
-        KeyBinding::new("alt-up", MoveUp, Some(KEY_CONTEXT)),
-        KeyBinding::new("alt-down", MoveDown, Some(KEY_CONTEXT)),
-        KeyBinding::new("f5", RefreshSelected, Some(KEY_CONTEXT)),
-        // Cmd+R / Ctrl+R: F5 is a media key on some keyboards.
-        KeyBinding::new("secondary-r", RefreshSelected, Some(KEY_CONTEXT)),
-    ]);
+    keybindings::bind(cx, "up", SelectPrevious, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "down", SelectNext, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "left", CollapseOrParent, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "right", ExpandOrChild, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "enter", Activate, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "delete", DeleteSelected, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "secondary-backspace", DeleteSelected, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "alt-up", MoveUp, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "alt-down", MoveDown, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "f5", RefreshSelected, Some(KEY_CONTEXT));
+    // Cmd+R / Ctrl+R: F5 is a media key on some keyboards.
+    keybindings::bind(cx, "secondary-r", RefreshSelected, Some(KEY_CONTEXT));
 }
 
 /// An entry of a row's context menu.

@@ -8,13 +8,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::keybindings;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{ActiveTheme as _, Icon, Sizable as _, h_flex};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, App, Bounds, Context, DragMoveEvent, Entity, IntoElement, KeyBinding, MouseButton,
-    Pixels, Render, ScrollHandle, SharedString, TestSupportExt as _, Window, canvas, div, hsla,
-    point, px,
+    AnyElement, App, Bounds, Context, DragMoveEvent, Entity, IntoElement, MouseButton, Pixels,
+    Render, ScrollHandle, SharedString, TestSupportExt as _, Window, canvas, div, hsla, point, px,
 };
 
 use super::tabs::{
@@ -33,11 +33,9 @@ pub const KEY_CONTEXT: &str = "Workspace";
 
 /// Binds the tab shortcuts in the [`KEY_CONTEXT`] key context.
 pub fn init(cx: &mut App) {
-    cx.bind_keys([
-        KeyBinding::new("secondary-w", CloseActiveTab, Some(KEY_CONTEXT)),
-        KeyBinding::new("ctrl-tab", NextTab, Some(KEY_CONTEXT)),
-        KeyBinding::new("ctrl-shift-tab", PreviousTab, Some(KEY_CONTEXT)),
-    ]);
+    keybindings::bind(cx, "secondary-w", CloseActiveTab, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "ctrl-tab", NextTab, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "ctrl-shift-tab", PreviousTab, Some(KEY_CONTEXT));
 }
 
 /// One header and its tabs.

@@ -8,6 +8,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::keybindings;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::component::Disableable as _;
@@ -20,8 +21,8 @@ use gpui_kit::component::table::{DataTable, TableState};
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyElement, App, Context, Entity, FocusHandle, IntoElement, KeyBinding, Render, ScrollHandle,
-    SharedString, Subscription, Task, TestSupportExt as _, Window, div, px,
+    AnyElement, App, Context, Entity, FocusHandle, IntoElement, Render, ScrollHandle, SharedString,
+    Subscription, Task, TestSupportExt as _, Window, div, px,
 };
 
 use super::state::{QueryTabState, QueryTabs, RunState, install};
@@ -41,14 +42,12 @@ const STATUS_REFRESH: Duration = Duration::from_millis(500);
 ///
 /// Needs the tab store, the view factory, the connection store and the sessions.
 pub fn init(cx: &mut App) {
-    cx.bind_keys([
-        KeyBinding::new("secondary-enter", RunQuery, Some(KEY_CONTEXT)),
-        KeyBinding::new("secondary-.", CancelQuery, Some(KEY_CONTEXT)),
-        // The editor binds both chords itself (a newline, code actions); these later bindings
-        // for an editor inside the tab take precedence there.
-        KeyBinding::new("secondary-enter", RunQuery, Some("QueryTab > Input")),
-        KeyBinding::new("secondary-.", CancelQuery, Some("QueryTab > Input")),
-    ]);
+    keybindings::bind(cx, "secondary-enter", RunQuery, Some(KEY_CONTEXT));
+    keybindings::bind(cx, "secondary-.", CancelQuery, Some(KEY_CONTEXT));
+    // The editor binds both chords itself (a newline, code actions); these later bindings
+    // for an editor inside the tab take precedence there.
+    keybindings::bind(cx, "secondary-enter", RunQuery, Some("QueryTab > Input"));
+    keybindings::bind(cx, "secondary-.", CancelQuery, Some("QueryTab > Input"));
     install(cx);
     view_factory::register(
         cx,
