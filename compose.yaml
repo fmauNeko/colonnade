@@ -2,7 +2,7 @@ name: colonnade-test
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
     environment:
       POSTGRES_USER: colonnade
       POSTGRES_PASSWORD: colonnade
