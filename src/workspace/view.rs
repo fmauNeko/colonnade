@@ -18,8 +18,8 @@ use gpui_kit::component::resizable::{h_resizable, resizable_panel};
 use gpui_kit::component::{ActiveTheme as _, TitleBar, h_flex, v_flex};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    AnyView, Context, Entity, FocusHandle, IntoElement, Render, TestSupportExt as _, Window, div,
-    px,
+    AnyView, App, ClickEvent, Context, Entity, FocusHandle, IntoElement, Render,
+    TestSupportExt as _, Window, div, px,
 };
 use std::collections::HashMap;
 
@@ -210,6 +210,11 @@ pub(crate) fn window_title(key: WindowKey, cx: &gpui_kit::App) -> String {
     }
 }
 
+/// Client-side (Linux) title bar close control: routes through the guarded close flow.
+pub(crate) fn on_title_bar_close(_: &ClickEvent, window: &mut Window, cx: &mut App) {
+    windows::request_window_close(window, cx);
+}
+
 impl Render for WorkspaceView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (title, color) = match self.window_key {
@@ -261,7 +266,7 @@ impl Render for WorkspaceView {
                     .when_some(title_colors, |bar, (background, foreground)| {
                         bar.bg(background).text_color(foreground)
                     })
-                    .on_close_window(|_, w, cx| windows::request_window_close(w, cx))
+                    .on_close_window(on_title_bar_close)
                     .child(
                         h_flex()
                             .gap_2()

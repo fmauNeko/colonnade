@@ -407,6 +407,7 @@ mod tests {
         status_bar::status_model,
         tabs::{GlobalTabStore, TabId, WindowKey},
     };
+    use gpui_kit::ClickEvent;
     use gpui_kit::component::ActiveTheme as _;
     use gpui_kit::prelude::*;
     use gpui_kit::test::TestAppContextExt as _;
@@ -912,18 +913,38 @@ mod tests {
         assert_eq!(cx.windows().len(), 2);
     }
 
-    #[cfg(target_os = "linux")]
     #[gpui_kit::test]
-    fn title_bar_close_uses_confirmation(cx: &mut TestAppContext) {
-        // Given: a Linux title bar and dirty SQL.
+    fn title_bar_close_handler_cancel_preserves_window_and_tabs(cx: &mut TestAppContext) {
+        // Given: dirty SQL and a cancelled close.
         let fx = setup(cx);
         dirty(cx);
-        // When: clicking the client-side close control.
-        ui(cx, &fx, |w, cx| w.click("close", cx));
+        fx.services.prompts.queue_confirm(ConfirmChoice::Cancel);
+        // When: the title bar close handler runs (the client-side control is not
+        // rendered by headless windows, which are never client-decorated).
+        ui(cx, &fx, |w, cx| {
+            crate::workspace::view::on_title_bar_close(&ClickEvent::default(), w, cx);
+        });
         cx.run_until_parked();
-        // Then: cancelling its confirmation preserves the window.
+        // Then: exactly one confirmation was requested and the work survives.
         assert_eq!(fx.services.prompts.confirm_requests().len(), 1);
         assert_eq!(cx.windows().len(), 1);
+        assert_eq!(tab_count(cx), 1);
+    }
+
+    #[gpui_kit::test]
+    fn title_bar_close_handler_confirm_closes_window_and_tabs(cx: &mut TestAppContext) {
+        // Given: dirty SQL and an accepted close.
+        let fx = setup(cx);
+        dirty(cx);
+        fx.services.prompts.queue_confirm(ConfirmChoice::Confirm);
+        // When: the title bar close handler runs.
+        ui(cx, &fx, |w, cx| {
+            crate::workspace::view::on_title_bar_close(&ClickEvent::default(), w, cx);
+        });
+        cx.run_until_parked();
+        // Then: the window and its tabs are gone.
+        assert_eq!(cx.windows().len(), 0);
+        assert_eq!(tab_count(cx), 0);
     }
 
     #[gpui_kit::test]
