@@ -1,0 +1,55 @@
+# Changelog
+
+## 0.1.0 (2026-10-28)
+
+
+### Features
+
+* **app:** assemble the workspace window with sidebar, grouped tabs and status bar ([1629ba9](https://github.com/fmauNeko/colonnade/commit/1629ba93f1ca74357db77f061e2947dc6e5db100))
+* bootstrap colonnade window with gpui kit ([b8a4607](https://github.com/fmauNeko/colonnade/commit/b8a46074e52eff125c184be6c818fa26026a4f99))
+* **catalog:** add the connection catalog model, tree operations and URL import ([b8fc32d](https://github.com/fmauNeko/colonnade/commit/b8fc32df0e946b350771cb7f4e5429c6c5f2d182))
+* **catalog:** persist connections and folders in connections.json ([fa72eb9](https://github.com/fmauNeko/colonnade/commit/fa72eb9721262a77bcc193662676bf313a7cc5e8))
+* **color:** add connection color generation and Peacock color math ([aa4bd99](https://github.com/fmauNeko/colonnade/commit/aa4bd994622bd405ec7bea7fb60ae526f05c637a))
+* **config:** resolve the XDG-aware config dir and persist JSON atomically ([8f9326f](https://github.com/fmauNeko/colonnade/commit/8f9326f44be22b3bae56cc4d756b722366e2458f))
+* **db:** add database model, SQL builder, backend traits, runtime bridge and fake backend ([d6b8cdd](https://github.com/fmauNeko/colonnade/commit/d6b8cdd4d0bf0ff23b4c0fc0db6e102eff1d5225))
+* **db:** add the MySQL and MariaDB backend ([9d246d7](https://github.com/fmauNeko/colonnade/commit/9d246d778f060253c82c2ce10c5c564ed9c5359b))
+* **db:** add the PostgreSQL backend ([386c5d1](https://github.com/fmauNeko/colonnade/commit/386c5d14b3a71ae43246ec13357ce22e79eeecb5))
+* **db:** add the SQLite backend ([dc39e73](https://github.com/fmauNeko/colonnade/commit/dc39e73632badd6e10b2efb99672b567e02f5425))
+* **dialogs:** add connection, folder, password, confirmation and color dialogs ([eb7a5e1](https://github.com/fmauNeko/colonnade/commit/eb7a5e1e7eb565a5e34eddc099f20efe36d3b984))
+* **grid:** add the shared result grid cell rendering ([286f275](https://github.com/fmauNeko/colonnade/commit/286f275737aeaea9b3becc2ee9acac51a6f63968))
+* initial app features ([3f079de](https://github.com/fmauNeko/colonnade/commit/3f079deab85a8c096909f432cbeedd0ed9261e04))
+* **query:** add query tabs with dialect highlighting, results and cancellation ([dfec17d](https://github.com/fmauNeko/colonnade/commit/dfec17de973016259d6fdf92c35ba160819f02d8))
+* **secrets:** add the keychain secret store and prompt hooks ([cda19d9](https://github.com/fmauNeko/colonnade/commit/cda19d9498c9bb6a13c5e93dc22deac3fd6560d1))
+* **sessions:** connect lazily with keychain or prompted passwords and cache schema children ([3e858e0](https://github.com/fmauNeko/colonnade/commit/3e858e0646e4efc56f0c9d1ec38bd0602826ec3e))
+* **settings:** add the settings model and store ([42781d7](https://github.com/fmauNeko/colonnade/commit/42781d7e26a74ed0e66f666dec92019a55947814))
+* **sidebar:** add the connections sidebar with folders and drag and drop ([7e9b106](https://github.com/fmauNeko/colonnade/commit/7e9b1068832b7e937a17bada23e0426c9402a327))
+* **sidebar:** refresh the selected row with secondary-r ([4a6b926](https://github.com/fmauNeko/colonnade/commit/4a6b92677e423d82abc22ee37d2a6c05feee138c))
+* **sql:** register PostgreSQL, MySQL and SQLite highlighting dialects ([34f8bcc](https://github.com/fmauNeko/colonnade/commit/34f8bcc0a16c4b98885be4018d0d3e0192e18d01))
+* **table:** browse table and view rows in a paged grid with server-side sort ([3a0cedd](https://github.com/fmauNeko/colonnade/commit/3a0cedd0d6da0f0efb7093c095e303160c82d7d9))
+* **themes:** add the settings dialog and a Zed-like theme selector ([0570e05](https://github.com/fmauNeko/colonnade/commit/0570e05fe0da783a1130d2662dc02ec79f10c3bf))
+* **themes:** add the theme catalog with Kit and Zed files and live reload ([1f43f7e](https://github.com/fmauNeko/colonnade/commit/1f43f7e9ba071b05d9754707a1fdec9e0e755f98))
+* **themes:** convert Zed theme files to GPUI Kit themes ([7a412c0](https://github.com/fmauNeko/colonnade/commit/7a412c0cb112ceca89e8311d0419ac2897216ea4))
+* **tint:** tint connection windows Peacock-style from the connection color ([1a9b8bb](https://github.com/fmauNeko/colonnade/commit/1a9b8bbab2aeb7b8dbeebca39ff0df3764db4321))
+* **windows:** open one window per connection with lossless mode switching ([d1ab132](https://github.com/fmauNeko/colonnade/commit/d1ab13218a434411543c9825f27b8f0e99e0c019))
+* **workspace:** add the tab store with connection groups and close guards ([5d69528](https://github.com/fmauNeko/colonnade/commit/5d69528fbf11ec61928dcbfe6c0130266ef351fa))
+* **workspace:** add the tab strip grouped by connection color ([fb793f4](https://github.com/fmauNeko/colonnade/commit/fb793f417f0906c52f787bd9a2faf607be8b06ba))
+
+
+### Bug Fixes
+
+* **app:** bind keyboard shortcuts through the host-aware loader ([0d15c6b](https://github.com/fmauNeko/colonnade/commit/0d15c6b1138f2eeef88c8fe52510b869c99a560a))
+* **app:** defer quit confirmation until action dispatch completes ([aeae04a](https://github.com/fmauNeko/colonnade/commit/aeae04a4eee8cf075e448fad58105e209f9971e4))
+* **app:** ignore quit while confirmation is open ([ae72095](https://github.com/fmauNeko/colonnade/commit/ae72095f35d02a6d60a3b0326f09bc343a0c85b1))
+* **app:** test the title bar close routing without a client-decorated window ([66f19f0](https://github.com/fmauNeko/colonnade/commit/66f19f05919a5c18b63676484dc96165d5749637))
+* **deps:** update rust crate gpui-kit to 0.8.0 ([5ba6b99](https://github.com/fmauNeko/colonnade/commit/5ba6b994f45da4587017b41636518a45194d9e23))
+* **deps:** update rust crate gpui-kit to 0.8.0 ([a8327d7](https://github.com/fmauNeko/colonnade/commit/a8327d73aa7928af1ea87ed15fbd83eb92fe57a3))
+* **dialogs:** wrap the connection test result inside the dialog ([1f7c68e](https://github.com/fmauNeko/colonnade/commit/1f7c68e173acecbf6f795e4d82e01fb63abab4fa))
+* **query:** keep tall error messages scrollable inside the results pane ([ee5ca80](https://github.com/fmauNeko/colonnade/commit/ee5ca80926bea0d348fc9e019e507976e6e11a83))
+* **query:** wrap long error messages inside the results pane ([6ee56a4](https://github.com/fmauNeko/colonnade/commit/6ee56a41e0efd40688444af96ddae4400e657028))
+* **sessions:** deliver session notices through one path ([8dce54e](https://github.com/fmauNeko/colonnade/commit/8dce54e45deda7dcc91d9f857a5f581b52a54d5b))
+* **settings:** make the window mode persistence test deterministic ([5b9e371](https://github.com/fmauNeko/colonnade/commit/5b9e371a4baa1701abf67997185a1be088bcbdd4))
+* **sidebar:** let the user refresh cached schema nodes ([2bec619](https://github.com/fmauNeko/colonnade/commit/2bec61996ea02d5a256c8c2389f21718b91e77f9))
+* **sidebar:** show the new folder icon ([6b79340](https://github.com/fmauNeko/colonnade/commit/6b79340545f21187a4a888ea43f45026fede19de))
+* **themes:** add a cancel button to the theme selector ([38ea25f](https://github.com/fmauNeko/colonnade/commit/38ea25f2246294978181269f42606cf613cb35d9))
+* **themes:** make selector tests deterministic ([9ebc86f](https://github.com/fmauNeko/colonnade/commit/9ebc86f3bf4d6ba5e8f6755f3ca334ee4ab9477e))
+* **themes:** refresh an open theme selector when the catalog reloads ([e1c75d1](https://github.com/fmauNeko/colonnade/commit/e1c75d132266519629310f557d94d598cf2a8101))
