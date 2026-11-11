@@ -8,7 +8,7 @@ rust = { version = "1.99.1", profile = "minimal", components = [
   "llvm-tools",
 ] }
 cocogitto = "7.0.0"
-typos = "1.51.1"
+typos = "1.52.2"
 actionlint = "1.7.12"
 zizmor = "1.31.1"
 cargo-deny = "0.20.2"
