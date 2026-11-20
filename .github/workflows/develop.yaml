@@ -100,7 +100,7 @@ jobs:
       MISE_ENABLE_TOOLS: rust
     services:
       postgres:
-        image: postgres:18@sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4
+        image: postgres:18@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a
         env:
           POSTGRES_USER: colonnade
           POSTGRES_PASSWORD: colonnade
